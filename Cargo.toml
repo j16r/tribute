@@ -5,3 +5,4 @@ authors = ["John Barker <dev@j16r.net>"]
 edition = "2018"
 
 [dependencies]
+coinbase-pro-rs = "0.3.3"

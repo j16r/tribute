@@ -4,7 +4,10 @@ extern crate coinbase_pro_rs;
 extern crate csv;
 extern crate toml;
 extern crate uuid;
+#[macro_use]
+extern crate clap;
 
+use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
 use std::io;
@@ -13,6 +16,7 @@ use std::process;
 use std::thread;
 use std::time::Duration;
 
+use clap::{App, SubCommand};
 use coinbase_pro_rs::structs::private::*;
 use coinbase_pro_rs::structs::public::*;
 use coinbase_pro_rs::structs::DateTime;
@@ -166,11 +170,48 @@ fn load_config() -> io::Result<Config> {
     Ok(config)
 }
 
+fn report() -> Result<(), Box<Error>> {
+    let accounts: HashMap<String, f64>;
+
+    let mut rdr = csv::Reader::from_reader(io::stdin());
+
+    // Load everything into memory sorted by date earliest to latest
+    let mut line_items = rdr
+        .records()
+        .map(|r| r.unwrap())
+        .collect::<Vec<csv::StringRecord>>();
+
+    line_items.sort_by(|a, b| a.get(8).unwrap().partial_cmp(b.get(8).unwrap()).unwrap());
+
+    for line_item in line_items {
+        println!("{:?}", line_item);
+    }
+
+    Ok(())
+}
+
 fn main() {
     let config = load_config().unwrap();
 
-    for exchange in config.exchanges {
-        if let Err(err) = export(&exchange) {
+    let matches = App::new("Tribute")
+        .version("1.0")
+        .author("John Barker <me@j16r.net>")
+        .about("Generate tax records from various crypto exchanges")
+        .subcommand(SubCommand::with_name("export").about("Exports your exchange order history"))
+        .subcommand(
+            SubCommand::with_name("report").about("Create a report from your order history"),
+        )
+        .get_matches();
+
+    if let Some(_) = matches.subcommand_matches("export") {
+        for exchange in config.exchanges {
+            if let Err(err) = export(&exchange) {
+                println!("{}", err);
+                process::exit(1);
+            }
+        }
+    } else if let Some(_) = matches.subcommand_matches("report") {
+        if let Err(err) = report() {
             println!("{}", err);
             process::exit(1);
         }

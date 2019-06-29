@@ -3,17 +3,21 @@ extern crate serde_derive;
 extern crate coinbase_pro_rs;
 extern crate csv;
 extern crate toml;
+extern crate uuid;
 
 use std::error::Error;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::process;
+use std::thread;
+use std::time::Duration;
 
 use coinbase_pro_rs::structs::private::*;
 use coinbase_pro_rs::structs::public::*;
 use coinbase_pro_rs::structs::DateTime;
-use coinbase_pro_rs::{Private, Sync, MAIN_URL};
+use coinbase_pro_rs::{CBError, Private, Sync, MAIN_URL};
+use uuid::Uuid;
 
 #[derive(Deserialize)]
 struct Config {
@@ -27,24 +31,6 @@ enum Exchange {
         secret: String,
         passphrase: String,
     },
-}
-
-fn get_rate_at(
-    client: &Private<Sync>,
-    product_id: &str,
-    time_of_trade: DateTime,
-) -> Result<f64, Box<Error>> {
-    let market_at_trade = client
-        .public()
-        .get_candles(&product_id, Some(time_of_trade), None, Granularity::M1)
-        .unwrap();
-
-    let mut rate = 0.0;
-    if let Some(candle) = market_at_trade.first() {
-        println!("candle({:?})", candle);
-        rate = (candle.1 + candle.2) / 2.0;
-    }
-    Ok(rate)
 }
 
 fn product_rhs(product_id: &str) -> Option<String> {
@@ -62,32 +48,61 @@ fn test_product_rhs() {
     assert_eq!(product_rhs(""), None);
 }
 
-fn get_usd_rate(
-    client: &Private<Sync>,
-    product_id: &str,
-    time_of_trade: DateTime,
-) -> Result<f64, Box<Error>> {
-    if let Ok(rate) = get_rate_at(client, product_id, time_of_trade) {
-        if let Some(product_lhs) = product_rhs(product_id) {
-            println!("{} = {}", product_lhs, rate);
-            if product_lhs == "USD" {
-                return Ok(rate);
-            }
+struct ThrottledClient {
+    client: Private<Sync>,
+}
 
-            let next_product_id = format!("{}-USD", product_lhs);
-
-            if let Ok(usd_rate) = get_rate_at(client, &next_product_id, time_of_trade) {
-                println!("{} = {}", next_product_id, usd_rate);
-                return Ok(rate * usd_rate);
-            }
-        }
+impl ThrottledClient {
+    fn new(key: &str, secret: &str, passphrase: &str) -> ThrottledClient {
+        let client: Private<Sync> = Private::new(MAIN_URL, key, secret, passphrase);
+        ThrottledClient { client: client }
     }
 
-    Ok(0.0)
+    fn get_rate_at(&self, product_id: &str, time_of_trade: DateTime) -> Result<f64, Box<Error>> {
+        thread::sleep(Duration::from_millis(350));
+
+        let market_at_trade = self
+            .client
+            .public()
+            .get_candles(&product_id, Some(time_of_trade), None, Granularity::M1)
+            .unwrap();
+
+        let mut rate = 0.0;
+        if let Some(candle) = market_at_trade.first() {
+            rate = (candle.1 + candle.2) / 2.0;
+        }
+        Ok(rate)
+    }
+
+    fn get_usd_rate(&self, product_id: &str, time_of_trade: DateTime) -> Result<f64, Box<Error>> {
+        if let Ok(rate) = self.get_rate_at(product_id, time_of_trade) {
+            if let Some(product_lhs) = product_rhs(product_id) {
+                if product_lhs == "USD" {
+                    return Ok(rate);
+                }
+
+                let next_product_id = format!("{}-USD", product_lhs);
+
+                if let Ok(usd_rate) = self.get_rate_at(&next_product_id, time_of_trade) {
+                    return Ok(rate * usd_rate);
+                }
+            }
+        }
+
+        Ok(0.0)
+    }
+
+    fn get_accounts(&self) -> Result<Vec<Account>, CBError> {
+        self.client.get_accounts()
+    }
+
+    fn get_account_hist(&self, id: Uuid) -> Result<Vec<AccountHistory>, CBError> {
+        self.client.get_account_hist(id)
+    }
 }
 
 fn export_coinbase(key: &str, secret: &str, passphrase: &str) -> Result<(), Box<Error>> {
-    let client: Private<Sync> = Private::new(MAIN_URL, key, secret, passphrase);
+    let client = ThrottledClient::new(key, secret, passphrase);
 
     let mut writer = csv::Writer::from_writer(io::stdout());
 
@@ -106,16 +121,12 @@ fn export_coinbase(key: &str, secret: &str, passphrase: &str) -> Result<(), Box<
     let accounts = client.get_accounts().unwrap();
 
     for account in accounts {
-        if account.currency != "ETH" {
-            continue;
-        }
-
         for trade in client.get_account_hist(account.id).unwrap() {
             if let AccountHistoryDetails::Match { product_id, .. } = trade.details {
                 let time_of_trade = trade.created_at;
 
-                let rate = get_rate_at(&client, &product_id, time_of_trade)?;
-                let usd_rate = get_usd_rate(&client, &product_id, time_of_trade)?;
+                let rate = client.get_rate_at(&product_id, time_of_trade)?;
+                let usd_rate = client.get_usd_rate(&product_id, time_of_trade)?;
                 let usd_amount = trade.amount * usd_rate;
 
                 writer.write_record(&[

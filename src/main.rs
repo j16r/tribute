@@ -1,11 +1,10 @@
 #[macro_use]
 extern crate serde_derive;
+extern crate clap;
 extern crate coinbase_pro_rs;
 extern crate csv;
 extern crate toml;
 extern crate uuid;
-#[macro_use]
-extern crate clap;
 
 use std::collections::HashMap;
 use std::error::Error;
@@ -16,6 +15,7 @@ use std::process;
 use std::thread;
 use std::time::Duration;
 
+use chrono::Datelike;
 use clap::{App, SubCommand};
 use coinbase_pro_rs::structs::private::*;
 use coinbase_pro_rs::structs::public::*;
@@ -112,8 +112,8 @@ fn export_coinbase(key: &str, secret: &str, passphrase: &str) -> Result<(), Box<
 
     writer.write_record(&[
         "ID",
-        "Token",
         "Market",
+        "Token",
         "Amount",
         "Balance",
         "Rate",
@@ -142,7 +142,7 @@ fn export_coinbase(key: &str, secret: &str, passphrase: &str) -> Result<(), Box<
                     &rate.to_string(),
                     &usd_rate.to_string(),
                     &usd_amount.to_string(),
-                    &trade.created_at.to_string(),
+                    &trade.created_at.to_rfc3339(),
                 ])?;
             }
         }
@@ -170,10 +170,21 @@ fn load_config() -> io::Result<Config> {
     Ok(config)
 }
 
-fn report() -> Result<(), Box<Error>> {
-    let accounts: HashMap<String, f64>;
+fn report(year: u16) -> Result<(), Box<Error>> {
+    let mut accounts: HashMap<String, f64> = HashMap::new();
 
     let mut rdr = csv::Reader::from_reader(io::stdin());
+
+    let mut writer = csv::Writer::from_writer(io::stdout());
+
+    writer.write_record(&[
+        "Description of property",
+        "Date acquired",
+        "Date sold or disposed of",
+        "Proceeds",
+        "Cost basis",
+        "Gain or (loss)",
+    ])?;
 
     // Load everything into memory sorted by date earliest to latest
     let mut line_items = rdr
@@ -183,11 +194,70 @@ fn report() -> Result<(), Box<Error>> {
 
     line_items.sort_by(|a, b| a.get(8).unwrap().partial_cmp(b.get(8).unwrap()).unwrap());
 
+    let (mut total_proceeds, mut total_cost, mut total_gain) = (0.0, 0.0, 0.0);
     for line_item in line_items {
-        println!("{:?}", line_item);
+        if line_item.get(2).unwrap() == "USD" {
+            continue;
+        }
+
+        let balance = accounts
+            .entry(line_item.get(2).unwrap().into())
+            .or_insert_with(|| 0.0);
+
+        *balance += line_item.get(7).unwrap().parse::<f64>().unwrap();
+
+        let date_of_sale = chrono::DateTime::parse_from_rfc3339(line_item.get(8).unwrap()).unwrap();
+        let year_of_sale = date_of_sale.year();
+
+        if year_of_sale == year as i32 {
+            let proceeds = line_item.get(7).unwrap().parse::<f64>().unwrap();
+            let cost_basis = 0.0;
+            let gain = proceeds - cost_basis;
+
+            total_proceeds += proceeds;
+            total_cost += cost_basis;
+            total_gain += gain;
+
+            writer.write_record(&[
+                &format!(
+                    "{} sold via {} pair",
+                    line_item.get(2).unwrap(),
+                    line_item.get(1).unwrap()
+                ),
+                "",
+                &date_of_sale.format("%D").to_string(),
+                &format_amount(proceeds),
+                &format_amount(cost_basis),
+                &format_amount(gain),
+            ])?;
+        } else if year_of_sale > year as i32 {
+            break;
+        }
     }
 
+    writer.write_record(&[
+        "Total",
+        "",
+        "",
+        &format_amount(total_proceeds),
+        &format_amount(total_cost),
+        &format_amount(total_gain),
+    ])?;
+
+    for (currency, balance) in accounts {
+        eprintln!("Currency {:?} balance = {:?}", currency, balance);
+    }
+
+    writer.flush()?;
     Ok(())
+}
+
+fn format_amount(amount: f64) -> String {
+    if amount < 0.0 {
+        format!("$({:.2})", amount.abs())
+    } else {
+        format!("${:.2}", amount)
+    }
 }
 
 fn main() {
@@ -211,7 +281,7 @@ fn main() {
             }
         }
     } else if let Some(_) = matches.subcommand_matches("report") {
-        if let Err(err) = report() {
+        if let Err(err) = report(2018) {
             println!("{}", err);
             process::exit(1);
         }

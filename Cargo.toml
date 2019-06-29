@@ -5,5 +5,9 @@ authors = ["John Barker <dev@j16r.net>"]
 edition = "2018"
 
 [dependencies]
-coinbase-pro-rs = "0.3.3"
+chrono = "0.4"
+coinbase-pro-rs = "0.3.4"
 csv = "1.1.0"
+serde = "1.0"
+serde_derive = "1.0"
+toml = "0.5.1"

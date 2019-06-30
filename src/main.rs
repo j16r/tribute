@@ -125,13 +125,23 @@ fn export_coinbase(key: &str, secret: &str, passphrase: &str) -> Result<(), Box<
     let accounts = client.get_accounts().unwrap();
 
     for account in accounts {
+        if account.currency == "USD" {
+            continue;
+        }
+
         for trade in client.get_account_hist(account.id).unwrap() {
             if let AccountHistoryDetails::Match { product_id, .. } = trade.details {
                 let time_of_trade = trade.created_at;
 
-                let rate = client.get_rate_at(&product_id, time_of_trade)?;
-                let usd_rate = client.get_usd_rate(&product_id, time_of_trade)?;
-                let usd_amount = trade.amount * usd_rate;
+                let mut rate = 1.0;
+                let mut usd_rate = 1.0;
+                let mut usd_amount = trade.amount;
+
+                if account.currency != "USD" {
+                    rate = client.get_rate_at(&product_id, time_of_trade)?;
+                    usd_rate = client.get_usd_rate(&product_id, time_of_trade)?;
+                    usd_amount *= usd_rate;
+                }
 
                 writer.write_record(&[
                     &trade.id.to_string(),
@@ -273,12 +283,13 @@ fn report(year: u16) -> Result<(), Box<Error>> {
         "Gain or (loss)",
     ])?;
 
-    // Load everything into memory sorted by date earliest to latest
+    // Load everything into memory
     let mut line_items = rdr
         .records()
         .map(|r| r.unwrap())
         .collect::<Vec<csv::StringRecord>>();
 
+    // Sort by date earliest to latest
     line_items.sort_by(|a, b| a.get(8).unwrap().partial_cmp(b.get(8).unwrap()).unwrap());
 
     let (mut total_proceeds, mut total_cost, mut total_gain) = (0.0, 0.0, 0.0);

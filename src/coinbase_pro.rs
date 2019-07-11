@@ -77,7 +77,7 @@ impl ThrottledClient {
     }
 }
 
-pub fn export_coinbase_pro(key: &str, secret: &str, passphrase: &str) -> Result<(), Box<Error>> {
+pub fn export(key: &str, secret: &str, passphrase: &str) -> Result<(), Box<Error>> {
     println!("export_coinbase_pro");
     return Ok(());
 

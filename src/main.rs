@@ -1,16 +1,16 @@
 #[macro_use]
 extern crate serde_derive;
 extern crate clap;
-extern crate coinbase_api;
 extern crate coinbase_pro_rs;
+extern crate coinbase_rs;
 extern crate csv;
 extern crate futures;
 extern crate toml;
 extern crate uuid;
 
+mod coinbase;
 mod coinbase_pro;
 
-use futures::future::Future;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
@@ -36,25 +36,7 @@ enum Exchange {
     Coinbase {
         key: String,
         secret: String,
-        passphrase: String,
     },
-}
-
-fn export_coinbase(key: &str, secret: &str, passphrase: &str) -> Result<(), Box<Error>> {
-    let client = coinbase_api::MarketDataClient::new(coinbase_api::LIVE).unwrap();
-    println!("export_coinbase");
-
-    client
-        .products()
-        .map(|products| {
-            println!("Pairs available for trading:");
-            for p in products {
-                println!("{}", p.id);
-            }
-        })
-        .map_err(|err| println!("Error: {:?}", err));
-
-    Ok(())
 }
 
 fn export(exchange: &Exchange) -> Result<(), Box<Error>> {
@@ -63,12 +45,8 @@ fn export(exchange: &Exchange) -> Result<(), Box<Error>> {
             key,
             secret,
             passphrase,
-        } => coinbase_pro::export_coinbase_pro(key, secret, passphrase),
-        Exchange::Coinbase {
-            key,
-            secret,
-            passphrase,
-        } => export_coinbase(key, secret, passphrase),
+        } => coinbase_pro::export(key, secret, passphrase),
+        Exchange::Coinbase { key, secret } => coinbase::export(key, secret),
     }
 }
 

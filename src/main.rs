@@ -69,6 +69,7 @@ impl Wallet {
         Wallet { lots: Vec::new() }
     }
 
+    // add_lot adds a purchase of some unit of an item, with a count and a total cost
     fn add_lot(&mut self, amount: &BigDecimal, unit_cost: &BigDecimal, date: chrono::NaiveDate) {
         self.lots.push(Lot {
             amount: amount.clone(),
@@ -90,6 +91,7 @@ impl Wallet {
         let mut total_cost = BigDecimal::zero();
         let mut lots_consumed = 0;
         let mut amount_to_consume = amount.clone();
+
         for lot in self.lots.iter_mut() {
             if date_of_purchase.is_none() {
                 date_of_purchase = Some(lot.date_of_purchase);
@@ -111,22 +113,25 @@ impl Wallet {
 
         Sale {
             cost_basis: total_cost,
-            date_of_purchase: date_of_purchase.unwrap(),
+            date_of_purchase: date_of_purchase,
         }
     }
 }
 
 #[derive(Debug)]
 struct Lot {
+    // amount represents a count of items in a lot
     amount: BigDecimal,
+    // unit_cost represents the cost of each item in a lot
     unit_cost: BigDecimal,
+    // date_of_purchase represents the date at which the lot was acquired
     date_of_purchase: chrono::NaiveDate,
 }
 
 #[derive(Debug)]
 struct Sale {
     cost_basis: BigDecimal,
-    date_of_purchase: chrono::NaiveDate,
+    date_of_purchase: Option<chrono::NaiveDate>,
 }
 
 #[test]
@@ -151,15 +156,24 @@ fn test_wallet_sell() {
 
     let sale1 = wallet.sell(&BigDecimal::from(5.0));
     assert_eq!(sale1.cost_basis, BigDecimal::from(5.0));
-    assert_eq!(sale1.date_of_purchase, chrono::NaiveDate::from_yo(2018, 1));
+    assert_eq!(
+        sale1.date_of_purchase,
+        Some(chrono::NaiveDate::from_yo(2018, 1))
+    );
 
     let sale2 = wallet.sell(&BigDecimal::from(10.0));
     assert_eq!(sale2.cost_basis, BigDecimal::from(15.0));
-    assert_eq!(sale2.date_of_purchase, chrono::NaiveDate::from_yo(2018, 1));
+    assert_eq!(
+        sale2.date_of_purchase,
+        Some(chrono::NaiveDate::from_yo(2018, 1))
+    );
 
     let sale3 = wallet.sell(&BigDecimal::from(10.0));
     assert_eq!(sale3.cost_basis, BigDecimal::from(25.0));
-    assert_eq!(sale3.date_of_purchase, chrono::NaiveDate::from_yo(2018, 2));
+    assert_eq!(
+        sale3.date_of_purchase,
+        Some(chrono::NaiveDate::from_yo(2018, 2))
+    );
 }
 
 fn report(year: u16) -> Result<(), Box<Error>> {
@@ -194,10 +208,6 @@ fn report(year: u16) -> Result<(), Box<Error>> {
             continue;
         }
 
-        if line_item.get(2).unwrap() != "LTC" {
-            continue;
-        }
-
         let wallet = wallets
             .entry(line_item.get(2).unwrap().into())
             .or_insert_with(|| Wallet::new());
@@ -208,8 +218,12 @@ fn report(year: u16) -> Result<(), Box<Error>> {
             chrono::DateTime::parse_from_rfc3339(line_item.get(8).unwrap()).unwrap();
         let date_of_sale = date_of_sale_tz.naive_utc().date();
 
-        let rate = line_item.get(5).unwrap().parse::<BigDecimal>().unwrap();
-        wallet.add_lot(&amount, &rate, date_of_sale);
+        let rate = parse_amount(line_item.get(6).unwrap()).unwrap();
+        if amount > BigDecimal::zero() {
+            wallet.add_lot(&amount, &rate, date_of_sale);
+        } else {
+            wallet.sell(&amount.abs());
+        }
 
         let year_of_sale = date_of_sale.year();
         if year_of_sale == year as i32 {
@@ -230,7 +244,9 @@ fn report(year: u16) -> Result<(), Box<Error>> {
                     line_item.get(2).unwrap(),
                     line_item.get(1).unwrap()
                 ),
-                &date_of_purchase.format("%D").to_string(),
+                &date_of_purchase
+                    .map(|d| d.format("%D").to_string())
+                    .unwrap_or("".to_string()),
                 &date_of_sale.format("%D").to_string(),
                 &format_usd_amount(&proceeds),
                 &format_usd_amount(&cost_basis),
@@ -300,13 +316,13 @@ fn main() {
     if let Some(_) = matches.subcommand_matches("export") {
         for exchange in config.exchanges {
             if let Err(err) = export(&exchange) {
-                println!("{}", err);
+                eprintln!("{}", err);
                 process::exit(1);
             }
         }
     } else if let Some(_) = matches.subcommand_matches("report") {
         if let Err(err) = report(2018) {
-            println!("{}", err);
+            eprintln!("{}", err);
             process::exit(1);
         }
     }

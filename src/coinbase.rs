@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::io;
 
-use bigdecimal::BigDecimal;
+use bigdecimal::{BigDecimal, Zero};
 use coinbase_rs::private::{Account, Transaction};
 use coinbase_rs::{CBError, Private, Sync, MAIN_URL};
 use std::collections::HashMap;
@@ -29,7 +29,6 @@ impl ThrottledClient {
 
 pub fn export(key: &str, secret: &str) -> Result<(), Box<Error>> {
     let client = ThrottledClient::new(key, secret);
-    let mut balances: HashMap<String, Balance> = HashMap::new();
 
     let mut writer = csv::Writer::from_writer(io::stdout());
 
@@ -45,6 +44,7 @@ pub fn export(key: &str, secret: &str) -> Result<(), Box<Error>> {
         "Created At",
     ])?;
 
+    let mut balances: HashMap<String, Balance> = HashMap::new();
     let accounts = client.get_accounts().unwrap();
 
     for account in accounts {
@@ -52,7 +52,7 @@ pub fn export(key: &str, secret: &str) -> Result<(), Box<Error>> {
             continue;
         }
 
-        let mut balance = balances
+        let balance = balances
             .entry(account.currency.code.to_string())
             .or_insert_with(|| Balance::new(&account.currency.code));
 
@@ -69,12 +69,12 @@ pub fn export(key: &str, secret: &str) -> Result<(), Box<Error>> {
                 writer.write_record(&[
                     &trade.id.to_string(),
                     &product_id,
-                    &account.currency.name,
+                    &account.currency.code,
                     &trade_amount.to_string(),
                     &format_amount(&balance.amount),
                     &"1.0".to_string(),
-                    &format_amount(&usd_rate),
-                    &usd_amount.to_string(),
+                    &format_usd_amount(&usd_rate),
+                    &format_usd_amount(&usd_amount),
                     &trade
                         .created_at
                         .map(|d| d.to_rfc3339())
@@ -88,11 +88,19 @@ pub fn export(key: &str, secret: &str) -> Result<(), Box<Error>> {
     Ok(())
 }
 
-fn format_amount(amount: &BigDecimal) -> String {
-    if amount < &BigDecimal::from(0.0) {
-        format!("$({:.2})", amount.abs())
+fn format_usd_amount(amount: &BigDecimal) -> String {
+    if amount < &BigDecimal::zero() {
+        format!("(${:.2})", amount.abs())
     } else {
         format!("${:.2}", amount)
+    }
+}
+
+fn format_amount(amount: &BigDecimal) -> String {
+    if amount < &BigDecimal::zero() {
+        format!("({:.2})", amount.abs())
+    } else {
+        format!("{:.2}", amount)
     }
 }
 

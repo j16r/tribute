@@ -12,6 +12,7 @@ coinbase-pro-rs = "0.3.4"
 coinbase-rs = { path = "../coinbase-rs/" }
 csv = "1.1.0"
 futures = "0.1"
+regex = "1.1.0"
 serde = "1.0"
 serde_derive = "1.0"
 toml = "0.5.1"

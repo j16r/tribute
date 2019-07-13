@@ -1,12 +1,10 @@
 use std::error::Error;
 use std::io;
-use std::thread;
-use std::time::Duration;
 
 use bigdecimal::BigDecimal;
-use chrono::NaiveDate;
 use coinbase_rs::private::{Account, Transaction};
 use coinbase_rs::{CBError, Private, Sync, MAIN_URL};
+use std::collections::HashMap;
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -31,6 +29,7 @@ impl ThrottledClient {
 
 pub fn export(key: &str, secret: &str) -> Result<(), Box<Error>> {
     let client = ThrottledClient::new(key, secret);
+    let mut balances: HashMap<String, Balance> = HashMap::new();
 
     let mut writer = csv::Writer::from_writer(io::stdout());
 
@@ -49,27 +48,30 @@ pub fn export(key: &str, secret: &str) -> Result<(), Box<Error>> {
     let accounts = client.get_accounts().unwrap();
 
     for account in accounts {
-        //dbg!(&account);
         if account.currency.code == "USD" {
             continue;
         }
 
+        let mut balance = balances
+            .entry(account.currency.code.to_string())
+            .or_insert_with(|| Balance::new(&account.currency.code));
+
         if let Ok(id) = Uuid::from_str(&account.id) {
             for trade in client.get_account_hist(id).unwrap() {
-                let time_of_trade = trade.created_at;
-
-                let mut usd_amount = trade.native_amount.amount;
+                let usd_amount = trade.native_amount.amount;
                 let trade_amount = trade.amount.amount;
                 let usd_rate = &usd_amount / &trade_amount;
 
-                let product_id = format!("{}-USD", account.currency.code);
+                let product_id = format!("{}-USD", &account.currency.code);
+
+                balance.add_trade(&trade_amount);
 
                 writer.write_record(&[
                     &trade.id.to_string(),
                     &product_id,
                     &account.currency.name,
                     &trade_amount.to_string(),
-                    &"".to_string(), // trade.balance.amount.to_string(),
+                    &format_amount(&balance.amount),
                     &"1.0".to_string(),
                     &format_amount(&usd_rate),
                     &usd_amount.to_string(),
@@ -91,5 +93,23 @@ fn format_amount(amount: &BigDecimal) -> String {
         format!("$({:.2})", amount.abs())
     } else {
         format!("${:.2}", amount)
+    }
+}
+
+struct Balance {
+    currency: String,
+    amount: BigDecimal,
+}
+
+impl Balance {
+    fn new(currency: &str) -> Balance {
+        Balance {
+            currency: currency.to_string(),
+            amount: BigDecimal::from(0.0),
+        }
+    }
+
+    fn add_trade(&mut self, amount: &BigDecimal) {
+        self.amount += amount;
     }
 }

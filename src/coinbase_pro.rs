@@ -78,9 +78,6 @@ impl ThrottledClient {
 }
 
 pub fn export(key: &str, secret: &str, passphrase: &str) -> Result<(), Box<Error>> {
-    println!("export_coinbase_pro");
-    return Ok(());
-
     let client = ThrottledClient::new(key, secret, passphrase);
 
     let mut writer = csv::Writer::from_writer(io::stdout());

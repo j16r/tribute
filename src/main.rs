@@ -236,7 +236,7 @@ fn report(year: u16) -> Result<(), Box<Error>> {
     Ok(())
 }
 
-fn format_amount(amount: f64) -> String {
+pub fn format_amount(amount: f64) -> String {
     if amount < 0.0 {
         format!("$({:.2})", amount.abs())
     } else {

@@ -90,17 +90,17 @@ pub fn export(key: &str, secret: &str) -> Result<(), Box<Error>> {
 
 fn format_usd_amount(amount: &BigDecimal) -> String {
     if amount < &BigDecimal::zero() {
-        format!("(${:.2})", amount.abs())
+        format!("(${:.4})", amount.abs())
     } else {
-        format!("${:.2}", amount)
+        format!("${:.4}", amount)
     }
 }
 
 fn format_amount(amount: &BigDecimal) -> String {
     if amount < &BigDecimal::zero() {
-        format!("({:.2})", amount.abs())
+        format!("({:.4})", amount.abs())
     } else {
-        format!("{:.2}", amount)
+        format!("{:.4}", amount)
     }
 }
 

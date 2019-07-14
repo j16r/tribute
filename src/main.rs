@@ -213,36 +213,42 @@ fn report(year: u16) -> Result<(), Box<Error>> {
             .or_insert_with(|| Wallet::new());
 
         let amount = parse_amount(line_item.get(3).unwrap()).unwrap();
-        let proceeds = parse_amount(line_item.get(7).unwrap()).unwrap();
         let date_of_sale_tz =
             chrono::DateTime::parse_from_rfc3339(line_item.get(8).unwrap()).unwrap();
         let date_of_sale = date_of_sale_tz.naive_utc().date();
 
         let rate = parse_amount(line_item.get(6).unwrap()).unwrap();
-        if amount > BigDecimal::zero() {
-            wallet.add_lot(&amount, &rate, date_of_sale);
-        } else {
-            wallet.sell(&amount.abs());
+        let year_of_sale = date_of_sale.year();
+        if year_of_sale > year as i32 {
+            break;
         }
 
-        let year_of_sale = date_of_sale.year();
+        let bought = amount > BigDecimal::zero();
+        if bought {
+            wallet.add_lot(&amount, &rate, date_of_sale);
+            continue;
+        }
+
+        let Sale {
+            cost_basis,
+            date_of_purchase,
+        } = wallet.sell(&amount.abs());
+
+        let proceeds = parse_amount(line_item.get(7).unwrap()).unwrap().abs();
+        let gain = &proceeds - &cost_basis;
+
+        // Only print sales for the specified year
         if year_of_sale == year as i32 {
-            let Sale {
-                cost_basis,
-                date_of_purchase,
-            } = wallet.sell(&amount);
-
-            let gain = &proceeds - &cost_basis;
-
             total_proceeds += &proceeds;
             total_cost += &cost_basis;
             total_gain += &gain;
 
             writer.write_record(&[
                 &format!(
-                    "{} sold via {} pair",
+                    "{} {} via {} pair",
                     line_item.get(2).unwrap(),
-                    line_item.get(1).unwrap()
+                    format_type(bought),
+                    line_item.get(1).unwrap(),
                 ),
                 &date_of_purchase
                     .map(|d| d.format("%D").to_string())
@@ -252,8 +258,6 @@ fn report(year: u16) -> Result<(), Box<Error>> {
                 &format_usd_amount(&cost_basis),
                 &format_usd_amount(&gain),
             ])?;
-        } else if year_of_sale > year as i32 {
-            break;
         }
     }
 
@@ -274,6 +278,14 @@ fn report(year: u16) -> Result<(), Box<Error>> {
     Ok(())
 }
 
+fn format_type(bought: bool) -> String {
+    if bought {
+        "bought".to_string()
+    } else {
+        "sold".to_string()
+    }
+}
+
 fn parse_amount(input: &str) -> Result<BigDecimal, ParseBigDecimalError> {
     let re = Regex::new(r"\A\((.*)\)\z").unwrap();
     if let Some(matches) = re.captures(input) {
@@ -286,17 +298,9 @@ fn parse_amount(input: &str) -> Result<BigDecimal, ParseBigDecimalError> {
 
 fn format_usd_amount(amount: &BigDecimal) -> String {
     if amount < &BigDecimal::from(0.0) {
-        format!("(${:.2})", amount.abs())
+        format!("(${:.4})", amount.abs())
     } else {
-        format!("${:.2}", amount)
-    }
-}
-
-fn format_amount(amount: &BigDecimal) -> String {
-    if amount < &BigDecimal::from(0.0) {
-        format!("({:.2})", amount.abs())
-    } else {
-        format!("{:.2}", amount)
+        format!("${:.4}", amount)
     }
 }
 

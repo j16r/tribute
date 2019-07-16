@@ -1,12 +1,14 @@
 use std::error::Error;
 use std::io;
 
-use bigdecimal::{BigDecimal, Zero};
+use bigdecimal::BigDecimal;
 use coinbase_rs::private::{Account, Transaction};
 use coinbase_rs::{CBError, Private, Sync, MAIN_URL};
 use std::collections::HashMap;
 use std::str::FromStr;
 use uuid::Uuid;
+
+use crate::types::{format_amount, format_usd_amount};
 
 struct ThrottledClient {
     client: Private<Sync>,
@@ -23,7 +25,7 @@ impl ThrottledClient {
     }
 
     fn get_account_hist(&self, id: Uuid) -> Result<Vec<Transaction>, CBError> {
-        self.client.list_transactions(&id)
+        self.client.transactions(&id)
     }
 }
 
@@ -86,22 +88,6 @@ pub fn export(key: &str, secret: &str) -> Result<(), Box<Error>> {
 
     writer.flush()?;
     Ok(())
-}
-
-fn format_usd_amount(amount: &BigDecimal) -> String {
-    if amount < &BigDecimal::zero() {
-        format!("(${:.4})", amount.abs())
-    } else {
-        format!("${:.4}", amount)
-    }
-}
-
-fn format_amount(amount: &BigDecimal) -> String {
-    if amount < &BigDecimal::zero() {
-        format!("({:.4})", amount.abs())
-    } else {
-        format!("{:.4}", amount)
-    }
 }
 
 struct Balance {

@@ -34,3 +34,15 @@ pub fn parse_amount(input: &str) -> Result<BigDecimal, ParseBigDecimalError> {
     }
     input.trim_start_matches('$').parse::<BigDecimal>()
 }
+
+#[test]
+fn test_parse_amount() {
+    assert_eq!(parse_amount("0"), Ok(BigDecimal::from(0)));
+    assert_eq!(parse_amount("0.0"), Ok(BigDecimal::from(0)));
+    assert_eq!(parse_amount("1.1"), Ok(BigDecimal::from(1.1)));
+    assert_eq!(parse_amount("(1.0)"), Ok(BigDecimal::from(-1)));
+    assert_eq!(parse_amount("$1.0"), Ok(BigDecimal::from(1)));
+    assert_eq!(parse_amount("($3.1427)"), Ok(BigDecimal::from(-3.1427)));
+
+    assert!(parse_amount("").is_err());
+}

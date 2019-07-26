@@ -1,43 +1,26 @@
-#[macro_use]
-extern crate serde_derive;
 extern crate clap;
 extern crate coinbase_pro_rs;
 extern crate coinbase_rs;
 extern crate csv;
 extern crate futures;
+#[macro_use]
+extern crate serde_derive;
+extern crate tempfile;
 extern crate toml;
 extern crate uuid;
 
 mod coinbase;
 mod coinbase_pro;
+mod config;
 mod report;
 mod types;
 
 use std::error::Error;
-use std::fs::File;
-use std::io;
-use std::io::prelude::*;
 use std::process;
 
 use clap::{App, SubCommand};
 
-#[derive(Deserialize)]
-struct Config {
-    exchanges: Vec<Exchange>,
-}
-
-#[derive(Deserialize)]
-enum Exchange {
-    CoinbasePro {
-        key: String,
-        secret: String,
-        passphrase: String,
-    },
-    Coinbase {
-        key: String,
-        secret: String,
-    },
-}
+use config::{load_config, Exchange};
 
 fn export(exchange: &Exchange) -> Result<(), Box<Error>> {
     match exchange {
@@ -50,16 +33,8 @@ fn export(exchange: &Exchange) -> Result<(), Box<Error>> {
     }
 }
 
-fn load_config() -> io::Result<Config> {
-    let mut input = String::new();
-    File::open("config.toml").and_then(|mut f| f.read_to_string(&mut input))?;
-
-    let config: Config = toml::from_str(&input).unwrap();
-    Ok(config)
-}
-
 fn main() {
-    let config = load_config().unwrap();
+    let config = load_config(None).unwrap();
 
     let matches = App::new("Tribute")
         .version("1.0")

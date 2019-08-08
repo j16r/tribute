@@ -3,9 +3,27 @@ use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use bigdecimal::BigDecimal;
-use toml::value::Datetime;
+use chrono::prelude::*;
+
+use crate::types;
+
+#[derive(Clone, Deserialize, Debug, PartialEq)]
+pub struct Transaction {
+    pub id: String,
+    pub market: String,
+    pub token: String,
+    pub amount: BigDecimal,
+    pub balance: BigDecimal,
+    pub rate: BigDecimal,
+    pub usd_rate: BigDecimal,
+    pub usd_amount: BigDecimal,
+    pub created_at: Option<toml::value::Datetime>,
+}
+
+impl Eq for Transaction {}
 
 pub enum ConfigError {
     IoError(io::Error),
@@ -34,25 +52,38 @@ impl fmt::Debug for ConfigError {
     }
 }
 
-#[derive(Deserialize, Debug, PartialEq)]
-pub struct Transaction {
-    id: String,
-    market: String,
-    token: String,
-    amount: BigDecimal,
-    balance: BigDecimal,
-    rate: BigDecimal,
-    usd_rate: BigDecimal,
-    usd_amount: BigDecimal,
-    created_at: Datetime,
-}
-
-impl Eq for Transaction {}
-
 #[derive(Deserialize, Debug, PartialEq, Eq)]
 pub struct Config {
     pub exchanges: Vec<Exchange>,
-    pub transactions: Vec<Transaction>,
+    transactions: Vec<Transaction>,
+}
+
+impl Config {
+    pub fn transactions(&self) -> Vec<types::Transaction> {
+        self.transactions
+            .iter()
+            .map(|t| types::Transaction {
+                id: t.id.clone(),
+                market: t.market.clone(),
+                token: t.token.clone(),
+                amount: t.amount.clone(),
+                balance: t.balance.clone(),
+                rate: t.rate.clone(),
+                usd_rate: t.usd_rate.clone(),
+                usd_amount: t.usd_amount.clone(),
+                created_at: t
+                    .created_at
+                    .clone()
+                    .map(|t| chrono_to_toml_date(t).unwrap().and_hms(0, 0, 0)),
+            })
+            .collect()
+    }
+}
+
+fn chrono_to_toml_date(value: toml::value::Datetime) -> chrono::ParseResult<chrono::NaiveDate> {
+    let input = format!("{}", &value);
+    println!("input {:?}", &input);
+    chrono::NaiveDate::parse_from_str(&input, "%Y-%m-%d")
 }
 
 #[derive(Deserialize, Debug, PartialEq, Eq)]
@@ -84,7 +115,9 @@ mod test {
     use std::path::PathBuf;
     use std::str::FromStr;
 
+    use bigdecimal::BigDecimal;
     use tempfile::TempDir;
+    use toml::value::Datetime;
 
     use super::*;
 
@@ -149,7 +182,7 @@ mod test {
                         rate: BigDecimal::from(0.387690),
                         usd_rate: BigDecimal::from(0.387690),
                         usd_amount: BigDecimal::from(848.85),
-                        created_at: Datetime::from_str("1997-02-14").unwrap(),
+                        created_at: Some(Datetime::from_str("1997-02-14").unwrap()),
                     },
                     Transaction {
                         id: "0x2".to_string(),
@@ -160,7 +193,7 @@ mod test {
                         rate: BigDecimal::from(0.257547),
                         usd_rate: BigDecimal::from(0.257547),
                         usd_amount: BigDecimal::from(1692.84),
-                        created_at: Datetime::from_str("1997-08-04").unwrap(),
+                        created_at: Some(Datetime::from_str("1997-08-04").unwrap()),
                     },
                 ],
             }

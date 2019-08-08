@@ -1,13 +1,16 @@
 use std::error::Error;
-use std::io;
+use std::str::FromStr;
 use std::thread;
 use std::time::Duration;
 
+use bigdecimal::{BigDecimal, Zero};
 use coinbase_pro_rs::structs::private::*;
 use coinbase_pro_rs::structs::public::*;
 use coinbase_pro_rs::structs::DateTime;
 use coinbase_pro_rs::{CBError, Private, Sync, MAIN_URL};
 use uuid::Uuid;
+
+use crate::types::Transaction;
 
 fn product_rhs(product_id: &str) -> Option<String> {
     product_id
@@ -34,23 +37,37 @@ impl ThrottledClient {
         ThrottledClient { client: client }
     }
 
-    fn get_rate_at(&self, product_id: &str, time_of_trade: DateTime) -> Result<f64, Box<Error>> {
+    fn get_rate_at(
+        &self,
+        product_id: &str,
+        time_of_trade: chrono::NaiveDateTime,
+    ) -> Result<BigDecimal, Box<Error>> {
         thread::sleep(Duration::from_millis(350));
 
         let market_at_trade = self
             .client
             .public()
-            .get_candles(&product_id, Some(time_of_trade), None, Granularity::M1)
+            .get_candles(
+                &product_id,
+                Some(to_utc(time_of_trade)),
+                None,
+                Granularity::M1,
+            )
             .unwrap();
 
-        let mut rate = 0.0;
+        let mut rate = BigDecimal::zero();
         if let Some(candle) = market_at_trade.first() {
-            rate = (candle.1 + candle.2) / 2.0;
+            rate =
+                (BigDecimal::from(candle.1) + BigDecimal::from(candle.2)) / BigDecimal::from(2.0);
         }
         Ok(rate)
     }
 
-    fn get_usd_rate(&self, product_id: &str, time_of_trade: DateTime) -> Result<f64, Box<Error>> {
+    fn get_usd_rate(
+        &self,
+        product_id: &str,
+        time_of_trade: chrono::NaiveDateTime,
+    ) -> Result<BigDecimal, Box<Error>> {
         if let Ok(rate) = self.get_rate_at(product_id, time_of_trade) {
             if let Some(product_lhs) = product_rhs(product_id) {
                 if product_lhs == "USD" {
@@ -65,7 +82,7 @@ impl ThrottledClient {
             }
         }
 
-        Ok(0.0)
+        Ok(BigDecimal::zero())
     }
 
     fn get_accounts(&self) -> Result<Vec<Account>, CBError> {
@@ -77,25 +94,16 @@ impl ThrottledClient {
     }
 }
 
-pub fn export(key: &str, secret: &str, passphrase: &str) -> Result<(), Box<Error>> {
+pub fn transactions(
+    key: &str,
+    secret: &str,
+    passphrase: &str,
+) -> Result<Vec<Transaction>, Box<Error>> {
     let client = ThrottledClient::new(key, secret, passphrase);
 
-    let mut writer = csv::Writer::from_writer(io::stdout());
-
-    writer.write_record(&[
-        "ID",
-        "Market",
-        "Token",
-        "Amount",
-        "Balance",
-        "Rate",
-        "USD Rate",
-        "USD Amount",
-        "Created At",
-    ])?;
+    let mut transactions = Vec::new();
 
     let accounts = client.get_accounts().unwrap();
-
     for account in accounts {
         if account.currency == "USD" {
             continue;
@@ -103,33 +111,36 @@ pub fn export(key: &str, secret: &str, passphrase: &str) -> Result<(), Box<Error
 
         for trade in client.get_account_hist(account.id).unwrap() {
             if let AccountHistoryDetails::Match { product_id, .. } = trade.details {
-                let time_of_trade = trade.created_at;
+                let time_of_trade = trade.created_at.naive_utc();
 
-                let mut rate = 1.0;
-                let mut usd_rate = 1.0;
-                let mut usd_amount = trade.amount;
+                let mut rate = BigDecimal::from(1.0);
+                let mut usd_rate = BigDecimal::from(1.0);
+                let mut usd_amount = BigDecimal::from(trade.amount);
 
-                if account.currency != "USD" {
-                    rate = client.get_rate_at(&product_id, time_of_trade)?;
-                    usd_rate = client.get_usd_rate(&product_id, time_of_trade)?;
-                    usd_amount *= usd_rate;
-                }
+                //if account.currency != "USD" {
+                rate = client.get_rate_at(&product_id, time_of_trade)?;
+                usd_rate = client.get_usd_rate(&product_id, time_of_trade)?;
+                usd_amount *= &usd_rate;
+                //}
 
-                writer.write_record(&[
-                    &trade.id.to_string(),
-                    &product_id,
-                    &account.currency,
-                    &trade.amount.to_string(),
-                    &trade.balance.to_string(),
-                    &rate.to_string(),
-                    &usd_rate.to_string(),
-                    &usd_amount.to_string(),
-                    &trade.created_at.to_rfc3339(),
-                ])?;
+                transactions.push(Transaction {
+                    id: trade.id.to_string(),
+                    market: product_id,
+                    token: account.currency.clone(),
+                    amount: BigDecimal::from(trade.amount),
+                    balance: BigDecimal::from(trade.balance),
+                    rate: rate,
+                    usd_rate: usd_rate,
+                    usd_amount: usd_amount,
+                    created_at: Some(time_of_trade),
+                });
             }
         }
     }
 
-    writer.flush()?;
-    Ok(())
+    Ok(transactions)
+}
+
+fn to_utc(value: chrono::NaiveDateTime) -> chrono::DateTime<chrono::Utc> {
+    chrono::DateTime::from_utc(value, chrono::Utc)
 }

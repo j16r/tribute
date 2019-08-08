@@ -1,5 +1,34 @@
+use std::cmp::Ordering;
+
 use bigdecimal::{BigDecimal, ParseBigDecimalError, Zero};
 use regex::Regex;
+
+#[derive(Clone, Deserialize, Debug, PartialEq)]
+pub struct Transaction {
+    pub id: String,
+    pub market: String,
+    pub token: String,
+    pub amount: BigDecimal,
+    pub balance: BigDecimal,
+    pub rate: BigDecimal,
+    pub usd_rate: BigDecimal,
+    pub usd_amount: BigDecimal,
+    pub created_at: Option<chrono::NaiveDateTime>,
+}
+
+impl Eq for Transaction {}
+
+impl PartialOrd for Transaction {
+    fn partial_cmp(&self, other: &Transaction) -> Option<Ordering> {
+        if let Some(ref created_at) = self.created_at {
+            if let Some(ref other_created_at) = other.created_at {
+                return Some(created_at.cmp(other_created_at));
+            }
+        }
+
+        Some(Ordering::Equal)
+    }
+}
 
 pub fn format_usd_amount(amount: &BigDecimal) -> String {
     if amount < &BigDecimal::zero() {

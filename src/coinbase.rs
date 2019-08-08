@@ -1,14 +1,15 @@
+use std::collections::HashMap;
 use std::error::Error;
-use std::io;
+use std::str::FromStr;
+use std::thread;
+use std::time::Duration;
 
 use bigdecimal::BigDecimal;
-use coinbase_rs::private::{Account, Transaction};
+use coinbase_rs::private::{Account, Transaction as CBTransaction};
 use coinbase_rs::{CBError, Private, Sync, MAIN_URL};
-use std::collections::HashMap;
-use std::str::FromStr;
 use uuid::Uuid;
 
-use crate::types::{format_amount, format_usd_amount};
+use crate::types::Transaction;
 
 struct ThrottledClient {
     client: Private<Sync>,
@@ -21,41 +22,34 @@ impl ThrottledClient {
     }
 
     fn get_accounts(&self) -> Result<Vec<Account>, CBError> {
+        thread::sleep(Duration::from_millis(350));
+
         self.client.accounts()
     }
 
-    fn get_account_hist(&self, id: Uuid) -> Result<Vec<Transaction>, CBError> {
+    fn get_account_hist(&self, id: Uuid) -> Result<Vec<CBTransaction>, CBError> {
+        thread::sleep(Duration::from_millis(350));
+
         self.client.transactions(&id)
     }
 }
 
-pub fn export(key: &str, secret: &str) -> Result<(), Box<Error>> {
+pub fn transactions(key: &str, secret: &str) -> Result<Vec<Transaction>, Box<Error>> {
     let client = ThrottledClient::new(key, secret);
 
-    let mut writer = csv::Writer::from_writer(io::stdout());
-
-    writer.write_record(&[
-        "ID",
-        "Market",
-        "Token",
-        "Amount",
-        "Balance",
-        "Rate",
-        "USD Rate",
-        "USD Amount",
-        "Created At",
-    ])?;
+    let mut transactions = Vec::new();
 
     let mut balances: HashMap<String, Balance> = HashMap::new();
     let accounts = client.get_accounts().unwrap();
 
     for account in accounts {
-        if account.currency.code == "USD" {
+        let code = account.currency.code.clone();
+        if &code == "USD" {
             continue;
         }
 
         let balance = balances
-            .entry(account.currency.code.to_string())
+            .entry(code.clone())
             .or_insert_with(|| Balance::new(&account.currency.code));
 
         if let Ok(id) = Uuid::from_str(&account.id) {
@@ -64,30 +58,26 @@ pub fn export(key: &str, secret: &str) -> Result<(), Box<Error>> {
                 let trade_amount = trade.amount.amount;
                 let usd_rate = &usd_amount / &trade_amount;
 
-                let product_id = format!("{}-USD", &account.currency.code);
+                let product_id = format!("{}-USD", code.clone());
 
                 balance.add_trade(&trade_amount);
 
-                writer.write_record(&[
-                    &trade.id.to_string(),
-                    &product_id,
-                    &account.currency.code,
-                    &trade_amount.to_string(),
-                    &format_amount(&balance.amount),
-                    &"1.0".to_string(),
-                    &format_usd_amount(&usd_rate),
-                    &format_usd_amount(&usd_amount),
-                    &trade
-                        .created_at
-                        .map(|d| d.to_rfc3339())
-                        .unwrap_or("".to_string()),
-                ])?;
+                transactions.push(Transaction {
+                    id: trade.id.to_string(),
+                    market: product_id,
+                    token: code.clone(),
+                    amount: trade_amount,
+                    balance: balance.amount.clone(),
+                    rate: BigDecimal::from(1),
+                    usd_rate: usd_rate,
+                    usd_amount: usd_amount,
+                    created_at: trade.created_at,
+                });
             }
         }
     }
 
-    writer.flush()?;
-    Ok(())
+    Ok(transactions)
 }
 
 struct Balance {

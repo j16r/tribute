@@ -38,14 +38,6 @@ pub fn format_usd_amount(amount: &BigDecimal) -> String {
     }
 }
 
-pub fn format_amount(amount: &BigDecimal) -> String {
-    if amount < &BigDecimal::zero() {
-        format!("({:.4})", amount.abs())
-    } else {
-        format!("{:.4}", amount)
-    }
-}
-
 pub fn format_type(bought: bool) -> String {
     if bought {
         "bought".to_string()

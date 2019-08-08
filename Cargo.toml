@@ -11,7 +11,7 @@ clap = "2.33"
 coinbase-pro-rs = "0.3.4"
 coinbase-rs = { path = "../coinbase-rs/" }
 csv = "1.1.0"
-futures = "0.1"
+futures = "*"
 itertools = "0.7"
 num-bigint = "0.2"
 regex = "1.1.0"

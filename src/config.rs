@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use bigdecimal::BigDecimal;
 
-use crate::types;
+use crate::types::{self, DateTime};
 
 #[derive(Clone, Deserialize, Debug, PartialEq)]
 pub struct Transaction {
@@ -69,19 +69,16 @@ impl Config {
                 rate: t.rate.clone(),
                 usd_rate: t.usd_rate.clone(),
                 usd_amount: t.usd_amount.clone(),
-                created_at: t
-                    .created_at
-                    .clone()
-                    .map(|t| chrono_to_toml_date(t).unwrap().and_hms(0, 0, 0)),
+                created_at: t.created_at.clone().map(|t| chrono_to_toml_date(t)),
             })
             .collect()
     }
 }
 
-fn chrono_to_toml_date(value: toml::value::Datetime) -> chrono::ParseResult<chrono::NaiveDate> {
+fn chrono_to_toml_date(value: toml::value::Datetime) -> DateTime {
     let input = format!("{}", &value);
-    println!("input {:?}", &input);
-    chrono::NaiveDate::parse_from_str(&input, "%Y-%m-%d")
+    let naive_date = chrono::NaiveDate::parse_from_str(&input, "%Y-%m-%d").unwrap();
+    chrono::DateTime::from_utc(naive_date.and_hms(0, 0, 0), chrono::Utc)
 }
 
 #[derive(Deserialize, Debug, PartialEq, Eq)]

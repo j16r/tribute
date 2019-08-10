@@ -8,7 +8,7 @@ use coinbase_pro_rs::structs::public::*;
 use coinbase_pro_rs::{CBError, Private, Sync, MAIN_URL};
 use uuid::Uuid;
 
-use crate::types::Transaction;
+use crate::types::{DateTime, Transaction};
 
 fn product_rhs(product_id: &str) -> Option<String> {
     product_id
@@ -38,19 +38,14 @@ impl ThrottledClient {
     fn get_rate_at(
         &self,
         product_id: &str,
-        time_of_trade: chrono::NaiveDateTime,
+        time_of_trade: DateTime,
     ) -> Result<BigDecimal, Box<Error>> {
         thread::sleep(Duration::from_millis(350));
 
         let market_at_trade = self
             .client
             .public()
-            .get_candles(
-                &product_id,
-                Some(to_utc(time_of_trade)),
-                None,
-                Granularity::M1,
-            )
+            .get_candles(&product_id, Some(time_of_trade), None, Granularity::M1)
             .unwrap();
 
         let mut rate = BigDecimal::zero();
@@ -64,7 +59,7 @@ impl ThrottledClient {
     fn get_usd_rate(
         &self,
         product_id: &str,
-        time_of_trade: chrono::NaiveDateTime,
+        time_of_trade: DateTime,
     ) -> Result<BigDecimal, Box<Error>> {
         if let Ok(rate) = self.get_rate_at(product_id, time_of_trade) {
             if let Some(product_lhs) = product_rhs(product_id) {
@@ -109,7 +104,7 @@ pub fn transactions(
 
         for trade in client.get_account_hist(account.id).unwrap() {
             if let AccountHistoryDetails::Match { product_id, .. } = trade.details {
-                let time_of_trade = trade.created_at.naive_utc();
+                let time_of_trade = trade.created_at;
 
                 let rate = client.get_rate_at(&product_id, time_of_trade)?;
                 let usd_rate = client.get_usd_rate(&product_id, time_of_trade)?;
@@ -131,8 +126,4 @@ pub fn transactions(
     }
 
     Ok(transactions)
-}
-
-fn to_utc(value: chrono::NaiveDateTime) -> chrono::DateTime<chrono::Utc> {
-    chrono::DateTime::from_utc(value, chrono::Utc)
 }

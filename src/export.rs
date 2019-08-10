@@ -1,8 +1,9 @@
+use crate::itertools::Itertools;
 use std::error::Error;
 use std::io;
 
 use crate::config::{Config, Exchange};
-use crate::types::Transaction;
+use crate::types::{format_amount, format_usd_amount, Transaction};
 use crate::{coinbase, coinbase_pro};
 
 pub fn export(config: &Config) -> Result<(), Box<Error>> {
@@ -41,19 +42,24 @@ pub fn export(config: &Config) -> Result<(), Box<Error>> {
         "Created At",
     ])?;
 
-    let transactions = itertools::kmerge(exchange_transactions);
+    // This will likely need to hold the entire set of transactions in memory, so watch out...
+    let transactions = itertools::kmerge(exchange_transactions).sorted();
 
-    //writer.write_record(&[
-    //&trade.id.to_string(),
-    //&product_id,
-    //&account.currency,
-    //&trade.amount.to_string(),
-    //&trade.balance.to_string(),
-    //&rate.to_string(),
-    //&usd_rate.to_string(),
-    //&usd_amount.to_string(),
-    //&trade.created_at.to_rfc3339(),
-    //])?;
+    for transaction in transactions {
+        writer.write_record(&[
+            &transaction.id,
+            &transaction.market,
+            &transaction.token,
+            &format_amount(&transaction.amount),
+            &format_usd_amount(&transaction.balance),
+            &format_amount(&transaction.rate),
+            &format_usd_amount(&transaction.usd_rate),
+            &format_usd_amount(&transaction.usd_amount),
+            &transaction
+                .created_at
+                .map_or("".to_string(), |t| t.to_rfc3339()),
+        ])?;
+    }
 
     writer.flush()?;
     Ok(())

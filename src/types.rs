@@ -3,7 +3,9 @@ use std::cmp::Ordering;
 use bigdecimal::{BigDecimal, ParseBigDecimalError, Zero};
 use regex::Regex;
 
-#[derive(Clone, Deserialize, Debug, PartialEq)]
+pub type DateTime = chrono::DateTime<chrono::Utc>;
+
+#[derive(Clone, Deserialize, Debug)]
 pub struct Transaction {
     pub id: String,
     pub market: String,
@@ -13,7 +15,13 @@ pub struct Transaction {
     pub rate: BigDecimal,
     pub usd_rate: BigDecimal,
     pub usd_amount: BigDecimal,
-    pub created_at: Option<chrono::NaiveDateTime>,
+    pub created_at: Option<DateTime>,
+}
+
+impl PartialEq for Transaction {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id && self.created_at == other.created_at
+    }
 }
 
 impl Eq for Transaction {}
@@ -30,6 +38,12 @@ impl PartialOrd for Transaction {
     }
 }
 
+impl Ord for Transaction {
+    fn cmp(&self, other: &Transaction) -> Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
 pub fn format_usd_amount(amount: &BigDecimal) -> String {
     if amount < &BigDecimal::zero() {
         format!("(${:.4})", amount.abs())
@@ -43,6 +57,14 @@ pub fn format_type(bought: bool) -> String {
         "bought".to_string()
     } else {
         "sold".to_string()
+    }
+}
+
+pub fn format_amount(amount: &BigDecimal) -> String {
+    if amount < &BigDecimal::zero() {
+        format!("({:.4})", amount.abs())
+    } else {
+        format!("{:.4}", amount)
     }
 }
 

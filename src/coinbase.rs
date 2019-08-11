@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::error::Error;
 use std::str::FromStr;
 use std::thread;
@@ -39,7 +38,6 @@ pub fn transactions(key: &str, secret: &str) -> Result<Vec<Transaction>, Box<Err
 
     let mut transactions = Vec::new();
 
-    let mut balances: HashMap<String, Balance> = HashMap::new();
     let accounts = client.get_accounts().unwrap();
 
     for account in accounts {
@@ -47,10 +45,6 @@ pub fn transactions(key: &str, secret: &str) -> Result<Vec<Transaction>, Box<Err
         if &code == "USD" {
             continue;
         }
-
-        let balance = balances
-            .entry(code.clone())
-            .or_insert_with(|| Balance::new(&account.currency.code));
 
         if let Ok(id) = Uuid::from_str(&account.id) {
             for trade in client.get_account_hist(id).unwrap() {
@@ -60,14 +54,11 @@ pub fn transactions(key: &str, secret: &str) -> Result<Vec<Transaction>, Box<Err
 
                 let product_id = format!("{}-USD", code.clone());
 
-                balance.add_trade(&trade_amount);
-
                 transactions.push(Transaction {
                     id: trade.id.to_string(),
                     market: product_id,
                     token: code.clone(),
                     amount: trade_amount,
-                    balance: balance.amount.clone(),
                     rate: BigDecimal::from(1),
                     usd_rate: usd_rate,
                     usd_amount: usd_amount,
@@ -78,22 +69,4 @@ pub fn transactions(key: &str, secret: &str) -> Result<Vec<Transaction>, Box<Err
     }
 
     Ok(transactions)
-}
-
-struct Balance {
-    currency: String,
-    amount: BigDecimal,
-}
-
-impl Balance {
-    fn new(currency: &str) -> Balance {
-        Balance {
-            currency: currency.to_string(),
-            amount: BigDecimal::from(0.0),
-        }
-    }
-
-    fn add_trade(&mut self, amount: &BigDecimal) {
-        self.amount += amount;
-    }
 }

@@ -115,7 +115,6 @@ pub fn transactions(
                     market: product_id,
                     token: account.currency.clone(),
                     amount: BigDecimal::from(trade.amount),
-                    balance: BigDecimal::from(trade.balance),
                     rate: rate,
                     usd_rate: usd_rate,
                     usd_amount: usd_amount,

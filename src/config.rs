@@ -14,7 +14,6 @@ pub struct Transaction {
     pub market: String,
     pub token: String,
     pub amount: BigDecimal,
-    pub balance: BigDecimal,
     pub rate: BigDecimal,
     pub usd_rate: BigDecimal,
     pub usd_amount: BigDecimal,
@@ -65,7 +64,6 @@ impl Config {
                 market: t.market.clone(),
                 token: t.token.clone(),
                 amount: t.amount.clone(),
-                balance: t.balance.clone(),
                 rate: t.rate.clone(),
                 usd_rate: t.usd_rate.clone(),
                 usd_amount: t.usd_amount.clone(),
@@ -131,7 +129,6 @@ mod test {
                 market = "BTC-USD"
                 token = "BTC"
                 amount = 1255.66
-                balance = 0
                 rate = 0.387690
                 usd_rate = 0.387690
                 usd_amount = 848.85
@@ -142,7 +139,6 @@ mod test {
                 market = "BTC-USD"
                 token = "BTC"
                 amount = 6572.94
-                balance = 0
                 rate = 0.257547
                 usd_rate = 0.257547
                 usd_amount = 1692.84
@@ -173,7 +169,6 @@ mod test {
                         market: "BTC-USD".to_string(),
                         token: "BTC".to_string(),
                         amount: BigDecimal::from(1255.66),
-                        balance: BigDecimal::from(0.0),
                         rate: BigDecimal::from(0.387690),
                         usd_rate: BigDecimal::from(0.387690),
                         usd_amount: BigDecimal::from(848.85),
@@ -184,7 +179,6 @@ mod test {
                         market: "BTC-USD".to_string(),
                         token: "BTC".to_string(),
                         amount: BigDecimal::from(6572.94),
-                        balance: BigDecimal::from(0.0),
                         rate: BigDecimal::from(0.257547),
                         usd_rate: BigDecimal::from(0.257547),
                         usd_amount: BigDecimal::from(1692.84),

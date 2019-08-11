@@ -11,7 +11,6 @@ pub struct Transaction {
     pub market: String,
     pub token: String,
     pub amount: BigDecimal,
-    pub balance: BigDecimal,
     pub rate: BigDecimal,
     pub usd_rate: BigDecimal,
     pub usd_amount: BigDecimal,

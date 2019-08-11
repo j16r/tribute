@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 use std::error::Error;
+use std::fmt;
 use std::io;
 
 use bigdecimal::{BigDecimal, Zero};
-use chrono::Datelike;
+use chrono::{self, Datelike};
 
-use crate::types::{format_type, format_usd_amount, parse_amount};
+use crate::types::{format_type, format_usd_amount, parse_amount, DateTime};
 
 struct Wallet {
     lots: Vec<Lot>,
@@ -17,7 +18,7 @@ impl Wallet {
     }
 
     // add_lot adds a purchase of some unit of an item, with a count and a total cost
-    fn add_lot(&mut self, amount: &BigDecimal, unit_cost: &BigDecimal, date: chrono::NaiveDate) {
+    fn add_lot(&mut self, amount: &BigDecimal, unit_cost: &BigDecimal, date: DateTime) {
         self.lots.push(Lot {
             amount: amount.clone(),
             unit_cost: unit_cost.clone(),
@@ -33,7 +34,7 @@ impl Wallet {
     }
 
     fn sell(&mut self, amount: &BigDecimal) -> Sale {
-        let mut date_of_purchase: Option<chrono::NaiveDate> = None;
+        let mut date_of_purchase: Option<DateTime> = None;
 
         let mut total_cost = BigDecimal::zero();
         let mut lots_consumed = 0;
@@ -65,6 +66,21 @@ impl Wallet {
     }
 }
 
+impl fmt::Debug for Wallet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for lot in self.lots.iter() {
+            write!(
+                f,
+                "lot {} units at {} = {}, ",
+                lot.amount,
+                lot.unit_cost,
+                &lot.amount * &lot.unit_cost
+            )?;
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug)]
 struct Lot {
     // amount represents a count of items in a lot
@@ -72,55 +88,63 @@ struct Lot {
     // unit_cost represents the cost of each item in a lot
     unit_cost: BigDecimal,
     // date_of_purchase represents the date at which the lot was acquired
-    date_of_purchase: chrono::NaiveDate,
+    date_of_purchase: DateTime,
 }
 
 #[derive(Debug)]
 struct Sale {
     cost_basis: BigDecimal,
-    date_of_purchase: Option<chrono::NaiveDate>,
+    date_of_purchase: Option<DateTime>,
 }
 
-#[test]
-fn test_wallet_sell() {
-    let mut wallet = Wallet::new();
+#[cfg(test)]
+mod test {
+    use chrono::offset::TimeZone;
+    use chrono::Utc;
 
-    wallet.add_lot(
-        &BigDecimal::from(10.0),
-        &BigDecimal::from(1.0),
-        chrono::NaiveDate::from_yo(2018, 1),
-    );
-    wallet.add_lot(
-        &BigDecimal::from(10.0),
-        &BigDecimal::from(2.0),
-        chrono::NaiveDate::from_yo(2018, 2),
-    );
-    wallet.add_lot(
-        &BigDecimal::from(10.0),
-        &BigDecimal::from(3.0),
-        chrono::NaiveDate::from_yo(2018, 3),
-    );
+    use super::*;
 
-    let sale1 = wallet.sell(&BigDecimal::from(5.0));
-    assert_eq!(sale1.cost_basis, BigDecimal::from(5.0));
-    assert_eq!(
-        sale1.date_of_purchase,
-        Some(chrono::NaiveDate::from_yo(2018, 1))
-    );
+    #[test]
+    fn test_wallet_sell() {
+        let mut wallet = Wallet::new();
 
-    let sale2 = wallet.sell(&BigDecimal::from(10.0));
-    assert_eq!(sale2.cost_basis, BigDecimal::from(15.0));
-    assert_eq!(
-        sale2.date_of_purchase,
-        Some(chrono::NaiveDate::from_yo(2018, 1))
-    );
+        wallet.add_lot(
+            &BigDecimal::from(10.0),
+            &BigDecimal::from(1.0),
+            Utc.ymd(2018, 1, 1).and_hms(0, 0, 0),
+        );
+        wallet.add_lot(
+            &BigDecimal::from(10.0),
+            &BigDecimal::from(2.0),
+            Utc.ymd(2018, 2, 1).and_hms(0, 0, 0),
+        );
+        wallet.add_lot(
+            &BigDecimal::from(10.0),
+            &BigDecimal::from(3.0),
+            Utc.ymd(2018, 3, 1).and_hms(0, 0, 0),
+        );
 
-    let sale3 = wallet.sell(&BigDecimal::from(10.0));
-    assert_eq!(sale3.cost_basis, BigDecimal::from(25.0));
-    assert_eq!(
-        sale3.date_of_purchase,
-        Some(chrono::NaiveDate::from_yo(2018, 2))
-    );
+        let sale1 = wallet.sell(&BigDecimal::from(5.0));
+        assert_eq!(sale1.cost_basis, BigDecimal::from(5.0));
+        assert_eq!(
+            sale1.date_of_purchase,
+            Some(Utc.ymd(2018, 1, 1).and_hms(0, 0, 0))
+        );
+
+        let sale2 = wallet.sell(&BigDecimal::from(10.0));
+        assert_eq!(sale2.cost_basis, BigDecimal::from(15.0));
+        assert_eq!(
+            sale2.date_of_purchase,
+            Some(Utc.ymd(2018, 1, 1).and_hms(0, 0, 0))
+        );
+
+        let sale3 = wallet.sell(&BigDecimal::from(10.0));
+        assert_eq!(sale3.cost_basis, BigDecimal::from(25.0));
+        assert_eq!(
+            sale3.date_of_purchase,
+            Some(Utc.ymd(2018, 2, 1).and_hms(0, 0, 0))
+        );
+    }
 }
 
 pub fn report(year: u16) -> Result<(), Box<Error>> {
@@ -146,29 +170,22 @@ pub fn report(year: u16) -> Result<(), Box<Error>> {
         .collect::<Vec<csv::StringRecord>>();
 
     // Sort by date earliest to latest
-    line_items.sort_by(|a, b| a.get(8).unwrap().partial_cmp(b.get(8).unwrap()).unwrap());
+    line_items.sort_by(|a, b| a.get(7).unwrap().partial_cmp(b.get(7).unwrap()).unwrap());
 
     let (mut total_proceeds, mut total_cost, mut total_gain) =
         (BigDecimal::zero(), BigDecimal::zero(), BigDecimal::zero());
     for line_item in line_items {
-        if line_item.get(2).unwrap() == "USD" {
-            continue;
-        }
+        let token = line_item.get(2).unwrap();
+        let market = line_item.get(1).unwrap();
 
-        //if line_item.get(2).unwrap() != "LTC" {
-        //continue;
-        //}
-
-        let wallet = wallets
-            .entry(line_item.get(2).unwrap().into())
-            .or_insert_with(|| Wallet::new());
+        let wallet = wallets.entry(token.into()).or_insert_with(|| Wallet::new());
 
         let amount = parse_amount(line_item.get(3).unwrap()).unwrap();
-        let date_of_sale_tz =
-            chrono::DateTime::parse_from_rfc3339(line_item.get(8).unwrap()).unwrap();
-        let date_of_sale = date_of_sale_tz.naive_utc().date();
+        let date_of_sale = chrono::DateTime::parse_from_rfc3339(line_item.get(7).unwrap())
+            .unwrap()
+            .with_timezone(&chrono::Utc);
 
-        let rate = parse_amount(line_item.get(6).unwrap()).unwrap();
+        let rate = parse_amount(line_item.get(5).unwrap()).unwrap();
         let year_of_sale = date_of_sale.year();
         if year_of_sale > year as i32 {
             break;
@@ -185,25 +202,18 @@ pub fn report(year: u16) -> Result<(), Box<Error>> {
             date_of_purchase,
         } = wallet.sell(&amount.abs());
 
-        let proceeds = parse_amount(line_item.get(7).unwrap()).unwrap().abs();
+        let proceeds = parse_amount(line_item.get(6).unwrap()).unwrap().abs();
         let gain = &proceeds - &cost_basis;
 
         // Only print sales for the specified year
-        if year_of_sale == year as i32 {
+        if token != "USD" && year_of_sale == year as i32 {
             total_proceeds += &proceeds;
             total_cost += &cost_basis;
             total_gain += &gain;
 
             writer.write_record(&[
-                &format!(
-                    "{} {} via {} pair",
-                    line_item.get(2).unwrap(),
-                    format_type(bought),
-                    line_item.get(1).unwrap(),
-                ),
-                &date_of_purchase
-                    .map(|d| d.format("%D").to_string())
-                    .unwrap_or("".to_string()),
+                &format_description(&token, &market, bought),
+                &date_of_purchase.map_or("".to_string(), |d| d.format("%D").to_string()),
                 &date_of_sale.format("%D").to_string(),
                 &format_usd_amount(&proceeds),
                 &format_usd_amount(&cost_basis),
@@ -227,4 +237,13 @@ pub fn report(year: u16) -> Result<(), Box<Error>> {
 
     writer.flush()?;
     Ok(())
+}
+
+fn format_description(sold_currency: &str, token: &str, bought: bool) -> String {
+    format!(
+        "{} {} via {} pair",
+        sold_currency,
+        format_type(bought),
+        token
+    )
 }

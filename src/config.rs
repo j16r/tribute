@@ -52,13 +52,15 @@ impl fmt::Debug for ConfigError {
 #[derive(Deserialize, Debug, PartialEq, Eq)]
 pub struct Config {
     pub exchanges: Vec<Exchange>,
-    transactions: Vec<Transaction>,
+    transactions: Option<Vec<Transaction>>,
     pub tax_year: u16,
 }
 
 impl Config {
     pub fn transactions(&self) -> Vec<types::Transaction> {
         self.transactions
+            .as_ref()
+            .unwrap_or(&Vec::new())
             .iter()
             .map(|t| types::Transaction {
                 id: t.id.clone(),
@@ -166,7 +168,7 @@ mod test {
                         passphrase: "coinbase-pro-passphrase".to_string()
                     },
                 ],
-                transactions: vec![
+                transactions: Some(vec![
                     Transaction {
                         id: "0x1".to_string(),
                         market: "BTC-USD".to_string(),
@@ -187,9 +189,23 @@ mod test {
                         usd_amount: BigDecimal::from(1692.84),
                         created_at: Some(Datetime::from_str("1997-08-04").unwrap()),
                     },
-                ],
+                ]),
             }
         );
+    }
+
+    #[test]
+    fn test_load_config_empty_transactions() {
+        let project = project(
+            r#"
+                tax_year = 2018
+                exchanges = []
+            "#,
+        )
+        .unwrap();
+
+        let config = load_config(Some(project.root.path().into()));
+        assert!(config.is_ok())
     }
 
     #[must_use]

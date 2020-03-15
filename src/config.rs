@@ -53,6 +53,7 @@ impl fmt::Debug for ConfigError {
 pub struct Config {
     pub exchanges: Vec<Exchange>,
     transactions: Vec<Transaction>,
+    pub tax_year: u16,
 }
 
 impl Config {
@@ -118,6 +119,8 @@ mod test {
     fn test_load_config() {
         let project = project(
             r#"
+                tax_year = 2018
+
                 exchanges = [
                     { Coinbase = { key = "coinbase-key", secret = "coinbase-secret" } },
                     { CoinbasePro = { key = "coinbase-pro-key", secret = "coinbase-pro-secret", passphrase = "coinbase-pro-passphrase" } },
@@ -152,6 +155,7 @@ mod test {
         assert_eq!(
             config.unwrap(),
             Config {
+                tax_year: 2018,
                 exchanges: vec![
                     Exchange::Coinbase {
                         key: "coinbase-key".to_string(),

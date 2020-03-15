@@ -42,7 +42,7 @@ fn main() {
             process::exit(1);
         }
     } else if let Some(_) = matches.subcommand_matches("report") {
-        if let Err(err) = report::report(2018) {
+        if let Err(err) = report::report(config.tax_year) {
             eprintln!("{}", err);
             process::exit(1);
         }

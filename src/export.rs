@@ -6,7 +6,7 @@ use crate::config::{Config, Exchange};
 use crate::types::{format_amount, format_usd_amount, Transaction};
 use crate::{coinbase, coinbase_pro};
 
-pub fn export(config: &Config) -> Result<(), Box<Error>> {
+pub fn export(config: &Config) -> Result<(), Box<dyn Error>> {
     let mut exchange_transactions: Vec<Vec<Transaction>> = Vec::new();
 
     // Add the manual transactions

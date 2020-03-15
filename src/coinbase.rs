@@ -33,7 +33,7 @@ impl ThrottledClient {
     }
 }
 
-pub fn transactions(key: &str, secret: &str) -> Result<Vec<Transaction>, Box<Error>> {
+pub fn transactions(key: &str, secret: &str) -> Result<Vec<Transaction>, Box<dyn Error>> {
     let client = ThrottledClient::new(key, secret);
 
     let mut transactions = Vec::new();

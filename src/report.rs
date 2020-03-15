@@ -147,7 +147,7 @@ mod test {
     }
 }
 
-pub fn report(year: u16) -> Result<(), Box<Error>> {
+pub fn report(year: u16) -> Result<(), Box<dyn Error>> {
     let mut wallets: HashMap<String, Wallet> = HashMap::new();
 
     let mut rdr = csv::Reader::from_reader(io::stdin());

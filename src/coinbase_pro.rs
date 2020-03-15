@@ -39,7 +39,7 @@ impl ThrottledClient {
         &self,
         product_id: &str,
         time_of_trade: DateTime,
-    ) -> Result<BigDecimal, Box<Error>> {
+    ) -> Result<BigDecimal, Box<dyn Error>> {
         thread::sleep(Duration::from_millis(350));
 
         let market_at_trade = self
@@ -60,7 +60,7 @@ impl ThrottledClient {
         &self,
         product_id: &str,
         time_of_trade: DateTime,
-    ) -> Result<BigDecimal, Box<Error>> {
+    ) -> Result<BigDecimal, Box<dyn Error>> {
         if let Ok(rate) = self.get_rate_at(product_id, time_of_trade) {
             if let Some(product_lhs) = product_rhs(product_id) {
                 if product_lhs == "USD" {
@@ -91,7 +91,7 @@ pub fn transactions(
     key: &str,
     secret: &str,
     passphrase: &str,
-) -> Result<Vec<Transaction>, Box<Error>> {
+) -> Result<Vec<Transaction>, Box<dyn Error>> {
     let client = ThrottledClient::new(key, secret, passphrase);
 
     let mut transactions = Vec::new();

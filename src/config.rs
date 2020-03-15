@@ -126,7 +126,6 @@ mod test {
                     { CoinbasePro = { key = "coinbase-pro-key", secret = "coinbase-pro-secret", passphrase = "coinbase-pro-passphrase" } },
                 ]
 
-                # FIXME: Need to anonymize these
                 [[transactions]]
                 id = "0x1"
                 market = "BTC-USD"

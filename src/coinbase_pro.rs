@@ -103,15 +103,15 @@ pub fn transactions(
         }
 
         for trade in client.get_account_hist(account.id).unwrap() {
-            if let AccountHistoryDetails::Match { product_id, .. } = trade.details {
+            if let AccountHistoryDetails::Match { product_id, trade_id, .. } = trade.details {
                 let time_of_trade = trade.created_at;
 
                 let rate = client.get_rate_at(&product_id, time_of_trade)?;
                 let usd_rate = client.get_usd_rate(&product_id, time_of_trade)?;
                 let usd_amount = BigDecimal::from(trade.amount) * &usd_rate;
 
-                transactions.push(Transaction {
-                    id: trade.id.to_string(),
+                let transaction = Transaction {
+                    id: trade_id.to_string(),
                     market: product_id,
                     token: account.currency.clone(),
                     amount: BigDecimal::from(trade.amount),
@@ -119,7 +119,8 @@ pub fn transactions(
                     usd_rate: usd_rate,
                     usd_amount: usd_amount,
                     created_at: Some(time_of_trade),
-                });
+                };
+                transactions.push(transaction);
             }
         }
     }

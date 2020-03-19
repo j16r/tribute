@@ -55,7 +55,7 @@ pub fn export(config: &Config) -> Result<(), Box<dyn Error>> {
             &format_usd_amount(&transaction.usd_amount),
             &transaction
                 .created_at
-                .map_or("".to_string(), |t| t.to_rfc3339()),
+                .map_or("".to_string(), |t| t.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)),
         ])?;
     }
 

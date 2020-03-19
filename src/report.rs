@@ -23,16 +23,26 @@ impl Wallet {
             amount: amount.clone(),
             unit_cost: unit_cost.clone(),
             date_of_purchase: date,
-        })
+        });
     }
 
-    fn total_value(&self) -> BigDecimal {
+    // the total cost basis of everything in this wallet
+    fn cost_basis(&self) -> BigDecimal {
         self.lots
             .iter()
             .map(|lot| &lot.amount * &lot.unit_cost)
             .sum()
     }
 
+    // the number of tokens stored in this wallet
+    fn count(&self) -> BigDecimal {
+        self.lots
+            .iter()
+            .map(|lot| &lot.amount)
+            .sum()
+    }
+
+    // sell some tokens, returning the Sale, remove any lots that were completely consumed
     fn sell(&mut self, amount: &BigDecimal) -> Sale {
         let mut date_of_purchase: Option<DateTime> = None;
 
@@ -56,7 +66,6 @@ impl Wallet {
             lots_consumed += 1;
         }
 
-        // Remove all consumed lots
         self.lots.drain(..lots_consumed);
 
         Sale {
@@ -93,7 +102,9 @@ struct Lot {
 
 #[derive(Debug)]
 struct Sale {
+    // how much did all the tokens that were sold cost in total
     cost_basis: BigDecimal,
+    // when was the first purchase of tokens made
     date_of_purchase: Option<DateTime>,
 }
 
@@ -232,7 +243,7 @@ pub fn report(year: u16) -> Result<(), Box<dyn Error>> {
     ])?;
 
     for (currency, wallet) in wallets {
-        eprintln!("Wallet {:?} balance = {:?}", currency, wallet.total_value());
+        eprintln!("Wallet {:} {:} tokens purchased at ${:}", currency, wallet.count(), wallet.cost_basis());
     }
 
     writer.flush()?;

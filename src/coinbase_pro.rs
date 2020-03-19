@@ -42,10 +42,15 @@ impl ThrottledClient {
     ) -> Result<BigDecimal, Box<dyn Error>> {
         thread::sleep(Duration::from_millis(350));
 
+        let start = Some(time_of_trade);
+        let bucket = chrono::Duration::seconds(60);
+        let end = Some(
+            time_of_trade.checked_add_signed(bucket).unwrap(),
+        );
         let market_at_trade = self
             .client
             .public()
-            .get_candles(&product_id, Some(time_of_trade), None, Granularity::M1)
+            .get_candles(&product_id, start, end, Granularity::M1)
             .unwrap();
 
         let mut rate = BigDecimal::zero();

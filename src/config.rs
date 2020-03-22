@@ -93,6 +93,10 @@ pub enum Exchange {
         key: String,
         secret: String,
     },
+    Ethereum {
+        url: String,
+        accounts: Vec<web3::types::H160>,
+    },
 }
 
 pub fn load_config(path: Option<PathBuf>) -> Result<Config, ConfigError> {

@@ -9,9 +9,11 @@ extern crate serde_derive;
 extern crate tempfile;
 extern crate toml;
 extern crate uuid;
+extern crate web3;
 
 mod coinbase;
 mod coinbase_pro;
+mod ethereum;
 mod config;
 mod export;
 mod report;

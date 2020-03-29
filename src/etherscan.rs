@@ -17,11 +17,14 @@ pub fn transactions(
 
         for tx in txes.iter() {
             let timestamp = NaiveDateTime::parse_from_str(&tx.time_stamp, "%s").unwrap();
+            let token_decimal: u32 = tx.token_decimal.parse().unwrap();
+            let divisor = 10_u64.pow(token_decimal);
+            let amount = BigDecimal::from_str(&tx.value).unwrap() / BigDecimal::from(divisor);
             let transaction = Transaction {
                 id: tx.hash.clone(),
                 market: "LINK-USD".to_string(),
                 token: tx.token_symbol.clone(),
-                amount: BigDecimal::from_str(&tx.value).unwrap(),
+                amount: amount,
                 rate: BigDecimal::from(0),
                 usd_rate: BigDecimal::from(0),
                 usd_amount: BigDecimal::from(0),

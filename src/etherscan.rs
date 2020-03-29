@@ -13,13 +13,13 @@ pub fn transactions(
     let mut transactions = Vec::new();
 
     for account in accounts.iter() {
-        let txes = txlist(&key, &account).unwrap();
+        let txes = txlist(&key, &account)?;
 
         for tx in txes.iter() {
-            let timestamp = NaiveDateTime::parse_from_str(&tx.time_stamp, "%s").unwrap();
-            let token_decimal: u32 = tx.token_decimal.parse().unwrap();
+            let timestamp = NaiveDateTime::parse_from_str(&tx.time_stamp, "%s")?;
+            let token_decimal: u32 = tx.token_decimal.parse()?;
             let divisor = 10_u64.pow(token_decimal);
-            let amount = BigDecimal::from_str(&tx.value).unwrap() / BigDecimal::from(divisor);
+            let amount = BigDecimal::from_str(&tx.value)? / BigDecimal::from(divisor);
             let transaction = Transaction {
                 id: tx.hash.clone(),
                 market: "LINK-USD".to_string(),
@@ -48,8 +48,8 @@ fn txlist(api_key: &str, account: &web3::types::H160) -> Result<Vec<Tx>, Box<dyn
         &format!("apiKey={}", api_key).to_string(),
     ].join("&");
     let url = format!("https://api.etherscan.io/api?{}", query);
-    let response = reqwest::blocking::get(&url).unwrap().json::<Response>().unwrap();
 
+    let response = reqwest::blocking::get(&url)?.json::<Response>()?;
     Ok(response.result)
 }
 

@@ -8,13 +8,15 @@ edition = "2018"
 bigdecimal = { version = "*", features = [ "serde" ] }
 chrono = "0.4"
 clap = "2.33"
-coinbase-pro-rs = "0.5.1"
+#coinbase-pro-rs = "0.5.1"
+coinbase-pro-rs = { path = "../coinbase-pro-rs/" }
 coinbase-rs = { path = "../coinbase-rs/" }
 csv = "1.1.0"
 futures = "*"
 itertools = "0.7"
 num-bigint = "0.2"
 regex = "1.1.0"
+reqwest = { version = "0.10", features = ["blocking", "json"] }
 serde = "1.0"
 serde_derive = "1.0"
 tempfile = "3"

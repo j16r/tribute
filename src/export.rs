@@ -4,7 +4,7 @@ use std::io;
 
 use crate::config::{Config, Exchange};
 use crate::types::{format_amount, format_usd_amount, Transaction};
-use crate::{coinbase, coinbase_pro, ethereum};
+use crate::{coinbase, coinbase_pro, ethereum, etherscan};
 
 pub fn export(config: &Config) -> Result<(), Box<dyn Error>> {
     let mut exchange_transactions: Vec<Vec<Transaction>> = Vec::new();
@@ -28,6 +28,10 @@ pub fn export(config: &Config) -> Result<(), Box<dyn Error>> {
                 ref url,
                 ref accounts,
             } => ethereum::transactions(url, accounts)?,
+            Exchange::Etherscan {
+                ref key,
+                ref accounts,
+            } => etherscan::transactions(key, accounts)?,
         });
     }
 

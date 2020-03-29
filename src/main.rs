@@ -13,8 +13,9 @@ extern crate web3;
 
 mod coinbase;
 mod coinbase_pro;
-mod ethereum;
 mod config;
+mod ethereum;
+mod etherscan;
 mod export;
 mod report;
 mod types;

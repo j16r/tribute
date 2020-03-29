@@ -97,6 +97,10 @@ pub enum Exchange {
         url: String,
         accounts: Vec<web3::types::H160>,
     },
+    Etherscan {
+        key: String,
+        accounts: Vec<web3::types::H160>,
+    },
 }
 
 pub fn load_config(path: Option<PathBuf>) -> Result<Config, ConfigError> {

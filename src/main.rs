@@ -24,10 +24,21 @@ use std::process;
 
 use clap::{App, SubCommand};
 
-use config::load_config;
+use config::{load_config, ConfigError};
 
 fn main() {
-    let config = load_config(None).unwrap();
+    let config = load_config(None).unwrap_or_else(|error| {
+        match error {
+            ConfigError::TomlError(e) => {
+                eprintln!("Error parsing config.rs: {}", e);
+                process::exit(1);
+            },
+            e @ _ => {
+                eprintln!("Error loading config.rs: {:?}", e);
+                process::exit(1);
+            }
+        }
+    });
 
     let matches = App::new("Tribute")
         .version("1.0")
@@ -41,12 +52,12 @@ fn main() {
 
     if let Some(_) = matches.subcommand_matches("export") {
         if let Err(err) = export::export(&config) {
-            eprintln!("{}", err);
+            eprintln!("Error while exporting: {}", err);
             process::exit(1);
         }
     } else if let Some(_) = matches.subcommand_matches("report") {
         if let Err(err) = report::report(config.tax_year) {
-            eprintln!("{}", err);
+            eprintln!("Error while generating report: {}", err);
             process::exit(1);
         }
     }

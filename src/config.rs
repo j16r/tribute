@@ -54,6 +54,7 @@ pub struct Config {
     pub exchanges: Vec<Exchange>,
     transactions: Option<Vec<Transaction>>,
     pub tax_year: u16,
+    pub accounts: Option<Vec<web3::types::H160>>,
 }
 
 impl Config {
@@ -95,11 +96,9 @@ pub enum Exchange {
     },
     Ethereum {
         url: String,
-        accounts: Vec<web3::types::H160>,
     },
     Etherscan {
         key: String,
-        accounts: Vec<web3::types::H160>,
     },
 }
 
@@ -134,6 +133,11 @@ mod test {
                 exchanges = [
                     { Coinbase = { key = "coinbase-key", secret = "coinbase-secret" } },
                     { CoinbasePro = { key = "coinbase-pro-key", secret = "coinbase-pro-secret", passphrase = "coinbase-pro-passphrase" } },
+                    { Ethereum = { url = "wss://ethereum.io/ws/v3/magic-token" } }
+                ]
+
+                accounts = [
+                    "0xffffffffffffffffffffffffffffffffffffffff",
                 ]
 
                 [[transactions]]
@@ -175,6 +179,9 @@ mod test {
                         secret: "coinbase-pro-secret".to_string(),
                         passphrase: "coinbase-pro-passphrase".to_string()
                     },
+                    Exchange::Ethereum {
+                        url: "wss://ethereum.io/ws/v3/magic-token".to_string(),
+                    },
                 ],
                 transactions: Some(vec![
                     Transaction {
@@ -197,6 +204,9 @@ mod test {
                         usd_amount: BigDecimal::from(1692.84),
                         created_at: Some(Datetime::from_str("1997-08-04").unwrap()),
                     },
+                ]),
+                accounts: Some(vec![
+                    web3::types::H160::from_str("ffffffffffffffffffffffffffffffffffffffff").unwrap(),
                 ]),
             }
         );

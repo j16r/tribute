@@ -24,14 +24,20 @@ pub fn export(config: &Config) -> Result<(), Box<dyn Error>> {
                 ref key,
                 ref secret,
             } => coinbase::transactions(key, secret)?,
-            Exchange::Ethereum {
-                ref url,
-                ref accounts,
-            } => ethereum::transactions(url, accounts)?,
+            Exchange::Ethereum { ref url } => {
+                match config.accounts {
+                    Some(ref a) => ethereum::transactions(url, a)?,
+                    _=> panic!("nope")
+                }
+            },
             Exchange::Etherscan {
                 ref key,
-                ref accounts,
-            } => etherscan::transactions(key, accounts)?,
+            } => {
+                match config.accounts {
+                    Some(ref a) => etherscan::transactions(key, a)?,
+                    _=> panic!("nope")
+                }
+            },
         });
     }
 

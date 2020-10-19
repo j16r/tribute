@@ -216,6 +216,11 @@ pub fn report(year: u16) -> Result<(), Box<dyn Error>> {
         let proceeds = parse_amount(line_item.get(6).unwrap()).unwrap().abs();
         let gain = &proceeds - &cost_basis;
 
+        // Skip zero value transactions
+        if proceeds.is_zero() && cost_basis.is_zero() && gain.is_zero() {
+            continue;
+        }
+
         // Only print sales for the specified year
         if token != "USD" && year_of_sale == year as i32 {
             total_proceeds += &proceeds;

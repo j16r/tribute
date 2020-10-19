@@ -118,7 +118,7 @@ mod test {
     use std::path::PathBuf;
     use std::str::FromStr;
 
-    use bigdecimal::BigDecimal;
+    use bigdecimal::{BigDecimal, FromPrimitive};
     use tempfile::TempDir;
     use toml::value::Datetime;
 
@@ -188,20 +188,20 @@ mod test {
                         id: "0x1".to_string(),
                         market: "BTC-USD".to_string(),
                         token: "BTC".to_string(),
-                        amount: BigDecimal::from(1255.66),
-                        rate: BigDecimal::from(0.387690),
-                        usd_rate: BigDecimal::from(0.387690),
-                        usd_amount: BigDecimal::from(848.85),
+                        amount: BigDecimal::from_f32(1255.66).unwrap(),
+                        rate: BigDecimal::from_f32(0.387690).unwrap(),
+                        usd_rate: BigDecimal::from_f32(0.387690).unwrap(),
+                        usd_amount: BigDecimal::from_f32(848.85).unwrap(),
                         created_at: Some(Datetime::from_str("1997-02-14").unwrap()),
                     },
                     Transaction {
                         id: "0x2".to_string(),
                         market: "BTC-USD".to_string(),
                         token: "BTC".to_string(),
-                        amount: BigDecimal::from(6572.94),
-                        rate: BigDecimal::from(0.257547),
-                        usd_rate: BigDecimal::from(0.257547),
-                        usd_amount: BigDecimal::from(1692.84),
+                        amount: BigDecimal::from_f32(6572.94).unwrap(),
+                        rate: BigDecimal::from_f32(0.257547).unwrap(),
+                        usd_rate: BigDecimal::from_f32(0.257547).unwrap(),
+                        usd_amount: BigDecimal::from_f32(1692.84).unwrap(),
                         created_at: Some(Datetime::from_str("1997-08-04").unwrap()),
                     },
                 ]),

@@ -58,8 +58,11 @@ impl Wallet {
             if &amount_to_consume < &lot.amount {
                 lot.amount -= &amount_to_consume;
                 total_cost += &amount_to_consume * &lot.unit_cost;
+                eprintln!("Sold partial amount {:?} at {:?}", lot.amount, total_cost);
                 break;
             }
+
+            eprintln!("Sold {:?}", lot);
 
             total_cost += &lot.amount * &lot.unit_cost;
             amount_to_consume -= &lot.amount;
@@ -110,6 +113,7 @@ struct Sale {
 
 #[cfg(test)]
 mod test {
+    use bigdecimal::FromPrimitive;
     use chrono::offset::TimeZone;
     use chrono::Utc;
 
@@ -120,37 +124,37 @@ mod test {
         let mut wallet = Wallet::new();
 
         wallet.add_lot(
-            &BigDecimal::from(10.0),
-            &BigDecimal::from(1.0),
+            &BigDecimal::from_f32(10.0).unwrap(),
+            &BigDecimal::from_f32(1.0).unwrap(),
             Utc.ymd(2018, 1, 1).and_hms(0, 0, 0),
         );
         wallet.add_lot(
-            &BigDecimal::from(10.0),
-            &BigDecimal::from(2.0),
+            &BigDecimal::from_f32(10.0).unwrap(),
+            &BigDecimal::from_f32(2.0).unwrap(),
             Utc.ymd(2018, 2, 1).and_hms(0, 0, 0),
         );
         wallet.add_lot(
-            &BigDecimal::from(10.0),
-            &BigDecimal::from(3.0),
+            &BigDecimal::from_f32(10.0).unwrap(),
+            &BigDecimal::from_f32(3.0).unwrap(),
             Utc.ymd(2018, 3, 1).and_hms(0, 0, 0),
         );
 
-        let sale1 = wallet.sell(&BigDecimal::from(5.0));
-        assert_eq!(sale1.cost_basis, BigDecimal::from(5.0));
+        let sale1 = wallet.sell(&BigDecimal::from_f32(5.0).unwrap());
+        assert_eq!(sale1.cost_basis, BigDecimal::from_f32(5.0).unwrap());
         assert_eq!(
             sale1.date_of_purchase,
             Some(Utc.ymd(2018, 1, 1).and_hms(0, 0, 0))
         );
 
-        let sale2 = wallet.sell(&BigDecimal::from(10.0));
-        assert_eq!(sale2.cost_basis, BigDecimal::from(15.0));
+        let sale2 = wallet.sell(&BigDecimal::from_f32(10.0).unwrap());
+        assert_eq!(sale2.cost_basis, BigDecimal::from_f32(15.0).unwrap());
         assert_eq!(
             sale2.date_of_purchase,
             Some(Utc.ymd(2018, 1, 1).and_hms(0, 0, 0))
         );
 
-        let sale3 = wallet.sell(&BigDecimal::from(10.0));
-        assert_eq!(sale3.cost_basis, BigDecimal::from(25.0));
+        let sale3 = wallet.sell(&BigDecimal::from_f32(10.0).unwrap());
+        assert_eq!(sale3.cost_basis, BigDecimal::from_f32(25.0).unwrap());
         assert_eq!(
             sale3.date_of_purchase,
             Some(Utc.ymd(2018, 2, 1).and_hms(0, 0, 0))

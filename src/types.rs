@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-use bigdecimal::{BigDecimal, ParseBigDecimalError, Zero};
+use bigdecimal::{BigDecimal, ParseBigDecimalError, Zero, FromPrimitive};
 use regex::Regex;
 
 pub type DateTime = chrono::DateTime<chrono::Utc>;
@@ -72,19 +72,19 @@ pub fn parse_amount(input: &str) -> Result<BigDecimal, ParseBigDecimalError> {
     if let Some(matches) = re.captures(input) {
         let amount = matches.get(1).unwrap().as_str();
         let result = amount.trim_start_matches('$').parse::<BigDecimal>()?;
-        return Ok(result * BigDecimal::from(-1));
+        return Ok(result * BigDecimal::from_i32(-1).unwrap());
     }
     input.trim_start_matches('$').parse::<BigDecimal>()
 }
 
 #[test]
 fn test_parse_amount() {
-    assert_eq!(parse_amount("0"), Ok(BigDecimal::from(0)));
-    assert_eq!(parse_amount("0.0"), Ok(BigDecimal::from(0)));
-    assert_eq!(parse_amount("1.1"), Ok(BigDecimal::from(1.1)));
-    assert_eq!(parse_amount("(1.0)"), Ok(BigDecimal::from(-1)));
-    assert_eq!(parse_amount("$1.0"), Ok(BigDecimal::from(1)));
-    assert_eq!(parse_amount("($3.1427)"), Ok(BigDecimal::from(-3.1427)));
+    assert_eq!(parse_amount("0"), Ok(BigDecimal::from_f32(0.0).unwrap()));
+    assert_eq!(parse_amount("0.0"), Ok(BigDecimal::from_f32(0.0).unwrap()));
+    assert_eq!(parse_amount("1.1"), Ok(BigDecimal::from_f32(1.1).unwrap()));
+    assert_eq!(parse_amount("(1.0)"), Ok(BigDecimal::from_f32(-1.0).unwrap()));
+    assert_eq!(parse_amount("$1.0"), Ok(BigDecimal::from_f32(1.0).unwrap()));
+    assert_eq!(parse_amount("($3.1427)"), Ok(BigDecimal::from_f32(-3.1427).unwrap()));
 
     assert!(parse_amount("").is_err());
 }

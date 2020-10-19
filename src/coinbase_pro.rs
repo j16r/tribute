@@ -2,7 +2,7 @@ use std::error::Error;
 use std::thread;
 use std::time::Duration;
 
-use bigdecimal::{BigDecimal, Zero};
+use bigdecimal::{BigDecimal, Zero, FromPrimitive};
 use coinbase_pro_rs::structs::private::*;
 use coinbase_pro_rs::structs::public::*;
 use coinbase_pro_rs::{CBError, Private, Sync, MAIN_URL};
@@ -56,7 +56,7 @@ impl ThrottledClient {
         let mut rate = BigDecimal::zero();
         if let Some(candle) = market_at_trade.first() {
             rate =
-                (BigDecimal::from(candle.1) + BigDecimal::from(candle.2)) / BigDecimal::from(2.0);
+                (BigDecimal::from_f64(candle.1).unwrap() + BigDecimal::from_f64(candle.2).unwrap()) / BigDecimal::from_f64(2.0).unwrap();
         }
         Ok(rate)
     }
@@ -113,13 +113,13 @@ pub fn transactions(
 
                 let rate = client.get_rate_at(&product_id, time_of_trade)?;
                 let usd_rate = client.get_usd_rate(&product_id, time_of_trade)?;
-                let usd_amount = BigDecimal::from(trade.amount) * &usd_rate;
+                let usd_amount = BigDecimal::from_f64(trade.amount).unwrap() * &usd_rate;
 
                 let transaction = Transaction {
                     id: trade_id.to_string(),
                     market: product_id,
                     token: account.currency.clone(),
-                    amount: BigDecimal::from(trade.amount),
+                    amount: BigDecimal::from_f64(trade.amount).unwrap(),
                     rate: rate,
                     usd_rate: usd_rate,
                     usd_amount: usd_amount,

@@ -158,6 +158,58 @@ mod test {
             Some(Utc.ymd(2018, 2, 1).and_hms(0, 0, 0))
         );
     }
+
+    #[test]
+    fn test_wallet_sell_fail() {
+        let mut wallet = Wallet::new("BTC");
+
+        wallet.add_lot(
+            &BigDecimal::from_f32(0.0444).unwrap(),
+            &BigDecimal::from_f32(2.0).unwrap(),
+            Utc.ymd(2018, 1, 1).and_hms(0, 0, 0),
+        );
+        wallet.add_lot(
+            &BigDecimal::from_f32(1.0).unwrap(),
+            &BigDecimal::from_f32(1.0).unwrap(),
+            Utc.ymd(2018, 2, 1).and_hms(0, 0, 0),
+        );
+
+        assert_eq!(wallet.count(), BigDecimal::from_f32(1.0444).unwrap());
+
+        let sale = wallet.sell(&BigDecimal::from_f32(0.5).unwrap());
+        assert_eq!(sale.cost_basis, BigDecimal::from_f32(0.5444).unwrap());
+
+        assert_eq!(wallet.count(), BigDecimal::from_f32(0.5444).unwrap());
+    }
+
+    #[test]
+    fn test_wallet_sell_no_lots() {
+        let mut wallet = Wallet::new("BTC");
+
+        let sale = wallet.sell(&BigDecimal::from_f32(5.0).unwrap());
+        assert_eq!(sale.cost_basis, BigDecimal::from_f32(0.0).unwrap());
+        assert_eq!(sale.date_of_purchase, None);
+    }
+
+    #[test]
+    fn test_wallet_sell_in_excess_of_lots() {
+        let mut wallet = Wallet::new("BTC");
+
+        wallet.add_lot(
+            &BigDecimal::from_f32(2.0).unwrap(),
+            &BigDecimal::from_f32(1.0).unwrap(),
+            Utc.ymd(2018, 1, 1).and_hms(0, 0, 0),
+        );
+
+        let sale = wallet.sell(&BigDecimal::from_f32(5.0).unwrap());
+        assert_eq!(sale.cost_basis, BigDecimal::from_f32(2.0).unwrap());
+        assert_eq!(
+            sale.date_of_purchase,
+            Some(Utc.ymd(2018, 1, 1).and_hms(0, 0, 0))
+        );
+
+        assert!(wallet.count().is_zero());
+    }
 }
 
 pub fn report(year: u16) -> Result<(), Box<dyn Error>> {

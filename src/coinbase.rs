@@ -17,7 +17,7 @@ struct ThrottledClient {
 impl ThrottledClient {
     fn new(key: &str, secret: &str) -> ThrottledClient {
         let client: Private<Sync> = Private::new(MAIN_URL, key, secret);
-        ThrottledClient { client: client }
+        ThrottledClient { client }
     }
 
     fn get_accounts(&self) -> Result<Vec<Account>, CBError> {
@@ -60,8 +60,8 @@ pub fn transactions(key: &str, secret: &str) -> Result<Vec<Transaction>, Box<dyn
                     token: code.clone(),
                     amount: trade_amount,
                     rate: BigDecimal::from(1),
-                    usd_rate: usd_rate,
-                    usd_amount: usd_amount,
+                    usd_rate,
+                    usd_amount,
                     created_at: trade.created_at,
                 });
             }

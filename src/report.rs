@@ -71,7 +71,7 @@ impl Wallet {
 
         Sale {
             cost_basis: total_cost,
-            date_of_purchase: date_of_purchase,
+            date_of_purchase,
         }
     }
 }

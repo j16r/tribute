@@ -9,12 +9,13 @@ use chrono::{self, Datelike};
 use crate::types::{format_type, format_usd_amount, parse_amount, DateTime};
 
 struct Wallet {
+    token: String,
     lots: Vec<Lot>,
 }
 
 impl Wallet {
-    fn new() -> Wallet {
-        Wallet { lots: Vec::new() }
+    fn new(token: &str) -> Wallet {
+        Wallet { token: token.into(), lots: Vec::new() }
     }
 
     // add_lot adds a purchase of some unit of an item, with a count and a total cost
@@ -58,11 +59,8 @@ impl Wallet {
             if &amount_to_consume < &lot.amount {
                 lot.amount -= &amount_to_consume;
                 total_cost += &amount_to_consume * &lot.unit_cost;
-                eprintln!("Sold partial amount {:?} at {:?}", lot.amount, total_cost);
                 break;
             }
-
-            eprintln!("Sold {:?}", lot);
 
             total_cost += &lot.amount * &lot.unit_cost;
             amount_to_consume -= &lot.amount;
@@ -121,7 +119,7 @@ mod test {
 
     #[test]
     fn test_wallet_sell() {
-        let mut wallet = Wallet::new();
+        let mut wallet = Wallet::new("BTC");
 
         wallet.add_lot(
             &BigDecimal::from_f32(10.0).unwrap(),
@@ -193,7 +191,7 @@ pub fn report(year: u16) -> Result<(), Box<dyn Error>> {
         let token = line_item.get(2).unwrap();
         let market = line_item.get(1).unwrap();
 
-        let wallet = wallets.entry(token.into()).or_insert_with(|| Wallet::new());
+        let wallet = wallets.entry(token.into()).or_insert_with(|| Wallet::new(token));
 
         let amount = parse_amount(line_item.get(3).unwrap()).unwrap();
         let date_of_sale = chrono::DateTime::parse_from_rfc3339(line_item.get(7).unwrap())
@@ -218,12 +216,13 @@ pub fn report(year: u16) -> Result<(), Box<dyn Error>> {
         } = wallet.sell(&amount.abs());
 
         let proceeds = parse_amount(line_item.get(6).unwrap()).unwrap().abs();
-        let gain = &proceeds - &cost_basis;
 
         // Skip zero value transactions
-        if proceeds.is_zero() && cost_basis.is_zero() && gain.is_zero() {
+        if proceeds.is_zero() && cost_basis.is_zero() {
             continue;
         }
+
+        let gain = &proceeds - &cost_basis;
 
         // Only print sales for the specified year
         if token != "USD" && year_of_sale == year as i32 {
@@ -250,10 +249,6 @@ pub fn report(year: u16) -> Result<(), Box<dyn Error>> {
         &format_usd_amount(&total_cost),
         &format_usd_amount(&total_gain),
     ])?;
-
-    for (currency, wallet) in wallets {
-        eprintln!("Wallet {:} {:} tokens purchased at ${:}", currency, wallet.count(), wallet.cost_basis());
-    }
 
     writer.flush()?;
     Ok(())

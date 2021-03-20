@@ -17,6 +17,7 @@ mod config;
 mod ethereum;
 mod etherscan;
 mod export;
+mod portfolio;
 mod report;
 mod types;
 mod wallet;

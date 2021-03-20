@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::error::Error;
 use std::io;
 
@@ -6,13 +5,13 @@ use bigdecimal::{BigDecimal, Zero};
 use chrono::{self, Datelike};
 
 use crate::types::{format_type, format_usd_amount, parse_amount};
-use crate::wallet::{Sale, Wallet};
+use crate::wallet::Sale;
+use crate::portfolio::Portfolio;
 
 pub fn report(year: u16) -> Result<(), Box<dyn Error>> {
-    let mut wallets: HashMap<String, Wallet> = HashMap::new();
+    let mut portfolio = Portfolio::new();
 
     let mut rdr = csv::Reader::from_reader(io::stdin());
-
     let mut writer = csv::Writer::from_writer(io::stdout());
 
     writer.write_record(&[
@@ -43,8 +42,6 @@ pub fn report(year: u16) -> Result<(), Box<dyn Error>> {
 
         let market = line_item.get(1).unwrap();
 
-        let wallet = wallets.entry(token.into()).or_insert_with(|| Wallet::new(token));
-
         let amount = parse_amount(line_item.get(3).unwrap()).unwrap();
         let date_of_sale = chrono::DateTime::parse_from_rfc3339(line_item.get(7).unwrap())
             .unwrap()
@@ -58,14 +55,14 @@ pub fn report(year: u16) -> Result<(), Box<dyn Error>> {
 
         let bought = amount > BigDecimal::zero();
         if bought {
-            wallet.add_lot(&amount, &rate, date_of_sale);
+            portfolio.add_lot(&token, &amount, &rate, date_of_sale);
             continue;
         }
 
         let Sale {
             cost_basis,
             date_of_purchase,
-        } = wallet.sell(&amount.abs());
+        } = portfolio.sell(&token, &amount.abs());
 
         let proceeds = parse_amount(line_item.get(6).unwrap()).unwrap().abs();
 
@@ -101,10 +98,6 @@ pub fn report(year: u16) -> Result<(), Box<dyn Error>> {
         &format_usd_amount(&total_cost),
         &format_usd_amount(&total_gain),
     ])?;
-
-    for (currency, wallet) in wallets {
-        eprintln!("Wallet {:} {:} tokens remain worth ${:} ({:}/{:})", currency, wallet.count(), wallet.cost_basis(), wallet.cumulative_bought, wallet.cumulative_sold);
-    }
 
     writer.flush()?;
     Ok(())

@@ -19,6 +19,7 @@ mod etherscan;
 mod export;
 mod report;
 mod types;
+mod wallet;
 
 use std::process;
 

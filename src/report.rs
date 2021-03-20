@@ -8,7 +8,7 @@ use crate::types::{format_type, format_usd_amount, parse_amount};
 use crate::wallet::Sale;
 use crate::portfolio::Portfolio;
 
-pub fn report(year: u16) -> Result<(), Box<dyn Error>> {
+pub fn report(year: u16, denomination: &str) -> Result<(), Box<dyn Error>> {
     let mut portfolio = Portfolio::new();
 
     let mut rdr = csv::Reader::from_reader(io::stdin());
@@ -70,7 +70,7 @@ pub fn report(year: u16) -> Result<(), Box<dyn Error>> {
         let gain = &proceeds - &cost_basis;
 
         // Only print sales for the specified year
-        if token != "USD" && year_of_sale == year as i32 {
+        if token != denomination && year_of_sale == year as i32 {
             total_proceeds += &proceeds;
             total_cost += &cost_basis;
             total_gain += &gain;

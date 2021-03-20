@@ -58,7 +58,7 @@ fn main() {
             process::exit(1);
         }
     } else if let Some(_) = matches.subcommand_matches("report") {
-        if let Err(err) = report::report(config.tax_year) {
+        if let Err(err) = report::report(config.tax_year, &config.denomination()) {
             eprintln!("Error while generating report: {}", err);
             process::exit(1);
         }

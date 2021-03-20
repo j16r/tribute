@@ -55,6 +55,7 @@ pub struct Config {
     transactions: Option<Vec<Transaction>>,
     pub tax_year: u16,
     pub accounts: Option<Vec<web3::types::H160>>,
+    pub denomination: Option<String>,
 }
 
 impl Config {
@@ -74,6 +75,10 @@ impl Config {
                 created_at: t.created_at.clone().map(|t| chrono_to_toml_date(t)),
             })
             .collect()
+    }
+
+    pub fn denomination(&self) -> String {
+        self.denomination.as_ref().unwrap_or(&"USD".to_string()).into()
     }
 }
 
@@ -163,10 +168,10 @@ mod test {
         )
         .unwrap();
 
-        let config = load_config(Some(project.root.path().into()));
+        let config = load_config(Some(project.root.path().into())).unwrap();
 
         assert_eq!(
-            config.unwrap(),
+            config,
             Config {
                 tax_year: 2018,
                 exchanges: vec![
@@ -208,8 +213,10 @@ mod test {
                 accounts: Some(vec![
                     web3::types::H160::from_str("ffffffffffffffffffffffffffffffffffffffff").unwrap(),
                 ]),
+                denomination: None,
             }
         );
+        assert_eq!(config.denomination(), "USD".to_string());
     }
 
     #[test]

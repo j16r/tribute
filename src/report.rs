@@ -36,10 +36,6 @@ pub fn report(year: u16) -> Result<(), Box<dyn Error>> {
         (BigDecimal::zero(), BigDecimal::zero(), BigDecimal::zero());
     for line_item in line_items {
         let token = line_item.get(2).unwrap();
-        if token != "BTC" {
-            continue
-        }
-
         let market = line_item.get(1).unwrap();
 
         let amount = parse_amount(line_item.get(3).unwrap()).unwrap();

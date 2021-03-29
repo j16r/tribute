@@ -6,6 +6,7 @@ use std::path::PathBuf;
 
 use bigdecimal::BigDecimal;
 
+use crate::symbol::{Symbol, USD};
 use crate::types::{self, DateTime};
 
 #[derive(Clone, Deserialize, Debug, PartialEq)]
@@ -77,8 +78,8 @@ impl Config {
             .collect()
     }
 
-    pub fn denomination(&self) -> String {
-        self.denomination.as_ref().unwrap_or(&"USD".to_string()).into()
+    pub fn denomination(&self) -> Symbol {
+        self.denomination.as_ref().unwrap_or(&"USD".to_string()).parse().unwrap()
     }
 }
 
@@ -216,7 +217,7 @@ mod test {
                 denomination: None,
             }
         );
-        assert_eq!(config.denomination(), "USD".to_string());
+        assert_eq!(config.denomination(), USD);
     }
 
     #[test]

@@ -3,6 +3,7 @@ use std::fmt;
 use bigdecimal::{BigDecimal, Zero};
 
 use crate::types::DateTime;
+use crate::symbol::Symbol;
 
 #[derive(Debug)]
 pub struct Lot {
@@ -24,16 +25,16 @@ pub struct Sale {
 
 
 pub struct Wallet {
-    token: String,
+    token: Symbol,
     pub cumulative_bought: BigDecimal,
     pub cumulative_sold: BigDecimal,
     lots: Vec<Lot>,
 }
 
 impl Wallet {
-    pub fn new(token: &str) -> Wallet {
+    pub fn new(token: &Symbol) -> Wallet {
         Wallet {
-            token: token.into(),
+            token: token.clone(),
             cumulative_bought: BigDecimal::zero(),
             cumulative_sold: BigDecimal::zero(),
             lots: Vec::new(),
@@ -131,11 +132,13 @@ mod test {
     use chrono::offset::TimeZone;
     use chrono::Utc;
 
+    use crate::symbol::BTC;
+
     use super::*;
 
     #[test]
     fn test_wallet_sell() {
-        let mut wallet = Wallet::new("BTC");
+        let mut wallet = Wallet::new(&BTC);
 
         wallet.add_lot(
             &BigDecimal::from_f32(10.0).unwrap(),
@@ -177,7 +180,7 @@ mod test {
 
     #[test]
     fn test_wallet_sell_fail() {
-        let mut wallet = Wallet::new("BTC");
+        let mut wallet = Wallet::new(&BTC);
 
         wallet.add_lot(
             &BigDecimal::from_f32(0.0444).unwrap(),
@@ -200,7 +203,7 @@ mod test {
 
     #[test]
     fn test_wallet_sell_no_lots() {
-        let mut wallet = Wallet::new("BTC");
+        let mut wallet = Wallet::new(&BTC);
 
         let sale = wallet.sell(&BigDecimal::from_f32(5.0).unwrap());
         assert_eq!(sale.cost_basis, BigDecimal::from_f32(0.0).unwrap());
@@ -209,7 +212,7 @@ mod test {
 
     #[test]
     fn test_wallet_sell_in_excess_of_lots() {
-        let mut wallet = Wallet::new("BTC");
+        let mut wallet = Wallet::new(&BTC);
 
         wallet.add_lot(
             &BigDecimal::from_f32(2.0).unwrap(),

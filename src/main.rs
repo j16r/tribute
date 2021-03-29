@@ -11,6 +11,7 @@ extern crate toml;
 extern crate uuid;
 extern crate web3;
 
+mod amount;
 mod coinbase;
 mod coinbase_pro;
 mod config;
@@ -19,6 +20,7 @@ mod etherscan;
 mod export;
 mod portfolio;
 mod report;
+mod symbol;
 mod types;
 mod wallet;
 

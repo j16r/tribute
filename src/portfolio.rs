@@ -75,6 +75,7 @@ impl Portfolio {
         dbg!(&denomination);
         let mut realizations: Vec<Realization> = Vec::new();
 
+        let mut working_trades = self.trades.clone();
         for trade in &self.trades {
             if let Trade{ref when, kind: Kind::Sell{ offered, gained } } = trade {
                 // TODO: backtrack through trades
@@ -92,6 +93,33 @@ impl Portfolio {
         }
 
         realizations
+    }
+
+    // find all the trades that were used to make up a specific trade
+    fn find_trades(&self, mut trades: Vec<Trade>, offered: &Amount, gained: &Amount) -> Vec<Trade> {
+
+        // So we just made a BTC - USD trade, but we bought the BTC with ETH, we need to find the
+        // ETH trades that make up this trade
+
+        let matched_trades = trades.drain_filter(|proposed_trade| {
+            match &proposed_trade.kind {
+                Kind::Sell{ offered: proposed_offer, gained: proposed_gain } if proposed_gain.symbol == gained.symbol => {
+                    true
+                }
+                _ => false
+            }
+        });
+
+
+        // for proposed_trade in trades.iter_mut() {
+        //     match &proposed_trade .kind {
+        //         Kind::Sell{ offered: proposed_offer, gained: proposed_gain } if proposed_gain.symbol == gained.symbol => {
+        //         }
+        //         _ => continue,
+        //     }
+        // }
+
+        Vec::new()
     }
 }
 

@@ -1,4 +1,5 @@
 #![feature(drain_filter)]
+#![feature(async_closure)]
 
 extern crate clap;
 extern crate coinbase_pro_rs;

@@ -1,69 +1,54 @@
-use std::error::Error;
 use std::str::FromStr;
-use std::thread;
-use std::time::Duration;
 
+use anyhow::Result;
 use bigdecimal::BigDecimal;
-use coinbase_rs::private::{Account, Transaction as CBTransaction};
-use coinbase_rs::{CBError, Private, Sync, MAIN_URL};
+use coinbase_rs::{Private, ASync, MAIN_URL};
 use uuid::Uuid;
+use futures::stream::StreamExt;
+use tokio::runtime::Runtime;
+use futures::pin_mut;
 
 use crate::types::Transaction;
 
-struct ThrottledClient {
-    client: Private<Sync>,
+pub fn transactions(key: &str, secret: &str) -> Result<Vec<Transaction>> {
+    let rt = Runtime::new().unwrap();
+    rt.block_on(fetch_transactions(key, secret))
 }
 
-impl ThrottledClient {
-    fn new(key: &str, secret: &str) -> ThrottledClient {
-        let client: Private<Sync> = Private::new(MAIN_URL, key, secret);
-        ThrottledClient { client }
-    }
-
-    fn get_accounts(&self) -> Result<Vec<Account>, CBError> {
-        thread::sleep(Duration::from_millis(350));
-
-        self.client.accounts()
-    }
-
-    fn get_account_hist(&self, id: Uuid) -> Result<Vec<CBTransaction>, CBError> {
-        thread::sleep(Duration::from_millis(350));
-
-        self.client.transactions(&id)
-    }
-}
-
-pub fn transactions(key: &str, secret: &str) -> Result<Vec<Transaction>, Box<dyn Error>> {
-    let client = ThrottledClient::new(key, secret);
+async fn fetch_transactions(key: &str, secret: &str) -> Result<Vec<Transaction>> {
+    let client: Private<ASync> = Private::new(MAIN_URL, key, secret);
 
     let mut transactions = Vec::new();
 
-    let accounts = client.get_accounts().unwrap();
+    let accounts_stream = client.accounts_stream();
+    pin_mut!(accounts_stream);
 
-    for account in accounts {
-        let code = account.currency.code.clone();
-        if &code == "USD" {
-            continue;
-        }
+    while let Some(accounts_result) = accounts_stream.next().await {
+        for account in accounts_result? {
+            if let Ok(ref id) = Uuid::from_str(&account.id) {
+                let transactions_stream = client.transactions_stream(id);
+                pin_mut!(transactions_stream);
 
-        if let Ok(id) = Uuid::from_str(&account.id) {
-            for trade in client.get_account_hist(id).unwrap() {
-                let usd_amount = trade.native_amount.amount;
-                let trade_amount = trade.amount.amount;
-                let usd_rate = &usd_amount / &trade_amount;
+                let code = account.currency.code;
+                while let Some(transactions_result) = transactions_stream.next().await {
+                    for trade in transactions_result? {
+                        let usd_amount = trade.native_amount.amount;
+                        let trade_amount = trade.amount.amount;
+                        let usd_rate = &usd_amount / &trade_amount;
 
-                let product_id = format!("{}-USD", code.clone());
-
-                transactions.push(Transaction {
-                    id: trade.id.to_string(),
-                    market: product_id,
-                    token: code.clone(),
-                    amount: trade_amount,
-                    rate: BigDecimal::from(1),
-                    usd_rate,
-                    usd_amount,
-                    created_at: trade.created_at,
-                });
+                        let product_id = format!("{}-{}", &code, &trade.native_amount.currency);
+                        transactions.push(Transaction {
+                            id: trade.id.to_string(),
+                            market: product_id,
+                            token: code.clone(),
+                            amount: trade_amount,
+                            rate: BigDecimal::from(1),
+                            usd_rate,
+                            usd_amount,
+                            created_at: trade.created_at,
+                        });
+                    }
+                }
             }
         }
     }

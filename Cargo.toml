@@ -5,11 +5,12 @@ authors = ["John Barker <dev@j16r.net>"]
 edition = "2018"
 
 [dependencies]
+anyhow = "1.0"
 bigdecimal = { version = "*", features = [ "serde" ] }
 chrono = "0.4"
 clap = "2.33"
-#coinbase-pro-rs = "0.5.1"
 coinbase-pro-rs = { path = "../coinbase-pro-rs/" }
+#coinbase-pro-rs = "0.5.1"
 coinbase-rs = { path = "../coinbase-rs/" }
 csv = "1.1.0"
 futures = "*"
@@ -20,6 +21,7 @@ reqwest = { version = "0.10", features = ["blocking", "json"] }
 serde = "1.0"
 serde_derive = "1.0"
 tempfile = "3"
+tokio = "*"
 toml = "0.5.1"
 uuid = { version = "0.8.1", features = [ "serde", "v4" ] }
 web3 = "0.10.0"

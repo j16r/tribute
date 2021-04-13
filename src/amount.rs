@@ -21,10 +21,10 @@ impl Display for Amount {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
         match self.symbol {
             Symbol::Fiat(ref symbol) => {
-                f.write_fmt(format_args!("{:}{:}", symbol, self.amount))?;
+                f.write_fmt(format_args!("{:}{:.2}", symbol, self.amount))?;
             },
             Symbol::Crypto(ref symbol) => {
-                f.write_fmt(format_args!("{:} {:}", self.amount, symbol))?;
+                f.write_fmt(format_args!("{:.2} {:}", self.amount, symbol))?;
             },
         }
         Ok(())

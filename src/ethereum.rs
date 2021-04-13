@@ -8,28 +8,22 @@ use web3::types::{BlockId, BlockNumber};
 use crate::types::Transaction;
 use chrono::prelude::*;
 
-pub fn transactions(url: &str, accounts: &Vec<web3::types::H160>) -> Result<Vec<Transaction>, Box<dyn Error>> {
-    println!("enumerating ethereum txes");
+const PROVIDER: &str = "ethereum";
 
+pub fn transactions(url: &str, accounts: &Vec<web3::types::H160>) -> Result<Vec<Transaction>, Box<dyn Error>> {
     let (_eloop, transport) = web3::transports::WebSocket::new(url)?;
     let web3 = web3::Web3::new(transport);
     let current_block = web3.eth().block_number().wait()?;
 
     let mut transactions = Vec::new();
 
-    dbg!(&accounts);
-
     for block_id in (0..current_block.as_usize()).rev() {
-        dbg!(&block_id);
-
         let number = BlockId::Number(BlockNumber::Number(block_id.into()));
         let block = web3.eth().block_with_txs(number).wait()?;
         for transaction in block.unwrap().transactions {
             if !transaction_related(&accounts, &transaction) {
                 continue;
             }
-
-            dbg!(&transaction);
 
             {
                 let now = Utc::now();
@@ -38,13 +32,13 @@ pub fn transactions(url: &str, accounts: &Vec<web3::types::H160>) -> Result<Vec<
                     id: format!("{:}", transaction.hash),
                     market: "ETH-USD".to_string(),
                     token: "ETH".to_string(),
-                    amount: amount,
+                    amount,
                     rate: BigDecimal::from(0),
                     usd_rate: BigDecimal::from(0),
                     usd_amount: BigDecimal::from(0),
                     created_at: Some(now.into()),
+                    provider: PROVIDER,
                 };
-                dbg!(&transaction);
                 transactions.push(transaction);
             }
 

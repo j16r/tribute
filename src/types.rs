@@ -15,6 +15,7 @@ pub struct Transaction {
     pub usd_rate: BigDecimal,
     pub usd_amount: BigDecimal,
     pub created_at: Option<DateTime>,
+    pub provider: &'static str,
 }
 
 impl PartialEq for Transaction {

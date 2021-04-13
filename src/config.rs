@@ -59,6 +59,8 @@ pub struct Config {
     pub denomination: Option<String>,
 }
 
+const PROVIDER: &str = "manual";
+
 impl Config {
     pub fn transactions(&self) -> Vec<types::Transaction> {
         self.transactions
@@ -74,6 +76,7 @@ impl Config {
                 usd_rate: t.usd_rate.clone(),
                 usd_amount: t.usd_amount.clone(),
                 created_at: t.created_at.clone().map(|t| chrono_to_toml_date(t)),
+                provider: PROVIDER,
             })
             .collect()
     }

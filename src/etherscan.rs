@@ -6,6 +6,8 @@ use bigdecimal::BigDecimal;
 use crate::types::{DateTime, Transaction};
 use chrono::prelude::*;
 
+const PROVIDER: &str = "etherscan";
+
 pub fn transactions(
     key: &str,
     accounts: &Vec<web3::types::H160>,
@@ -24,11 +26,12 @@ pub fn transactions(
                 id: tx.hash.clone(),
                 market: "LINK-USD".to_string(),
                 token: tx.token_symbol.clone(),
-                amount: amount,
+                amount,
                 rate: BigDecimal::from(0),
                 usd_rate: BigDecimal::from(0),
                 usd_amount: BigDecimal::from(0),
                 created_at: Some(DateTime::from_utc(timestamp, chrono::Utc)),
+                provider: PROVIDER,
             };
             transactions.push(transaction);
         }

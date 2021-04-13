@@ -10,6 +10,8 @@ use futures::pin_mut;
 
 use crate::types::Transaction;
 
+const PROVIDER: &str = "coinbase";
+
 pub fn transactions(key: &str, secret: &str) -> Result<Vec<Transaction>> {
     let rt = Runtime::new().unwrap();
     rt.block_on(fetch_transactions(key, secret))
@@ -46,6 +48,7 @@ async fn fetch_transactions(key: &str, secret: &str) -> Result<Vec<Transaction>>
                             usd_rate,
                             usd_amount,
                             created_at: trade.created_at,
+                            provider: PROVIDER,
                         });
                     }
                 }

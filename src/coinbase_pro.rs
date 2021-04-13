@@ -10,6 +10,8 @@ use uuid::Uuid;
 
 use crate::types::{DateTime, Transaction};
 
+const PROVIDER: &str = "coinbase-pro";
+
 fn product_rhs(product_id: &str) -> Option<String> {
     product_id
         .split("-")
@@ -32,7 +34,7 @@ struct ThrottledClient {
 impl ThrottledClient {
     fn new(key: &str, secret: &str, passphrase: &str) -> ThrottledClient {
         let client: Private<Sync> = Private::new(MAIN_URL, key, secret, passphrase);
-        ThrottledClient { client: client }
+        ThrottledClient { client }
     }
 
     fn get_rate_at(
@@ -120,10 +122,11 @@ pub fn transactions(
                     market: product_id,
                     token: account.currency.clone(),
                     amount: BigDecimal::from_f64(trade.amount).unwrap(),
-                    rate: rate,
-                    usd_rate: usd_rate,
-                    usd_amount: usd_amount,
+                    rate,
+                    usd_rate,
+                    usd_amount,
                     created_at: Some(time_of_trade),
+                    provider: PROVIDER,
                 };
                 transactions.push(transaction);
             }

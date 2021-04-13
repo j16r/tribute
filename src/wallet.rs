@@ -49,9 +49,6 @@ impl Wallet {
             unit_cost: unit_cost.clone(),
             date_of_purchase: date,
         });
-
-        eprintln!("Buying {:} of {:} (Total {:})", amount, self.token, self.count());
-
     }
 
     // the total cost basis of everything in this wallet
@@ -103,7 +100,6 @@ impl Wallet {
 
         self.lots.drain(..lots_consumed);
 
-        eprintln!("Selling {:} of {:} (Total {:})", amount, self.token, self.count());
         Sale {
             cost_basis: total_cost,
             date_of_purchase,

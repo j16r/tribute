@@ -53,6 +53,7 @@ pub fn export(config: &Config) -> Result<(), Box<dyn Error>> {
         "USD Rate",
         "USD Amount",
         "Created At",
+        "Provider",
     ])?;
 
     // This will likely need to hold the entire set of transactions in memory, so watch out...
@@ -70,6 +71,7 @@ pub fn export(config: &Config) -> Result<(), Box<dyn Error>> {
             &transaction
                 .created_at
                 .map_or("".to_string(), |t| t.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)),
+            transaction.provider,
         ])?;
     }
 

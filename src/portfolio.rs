@@ -134,19 +134,7 @@ impl Portfolio {
                                 processed += 1;
                                 realization_processed = true;
 
-                                if rhs_offered.amount == lhs_gained.amount {
-
-                                    // Perfect match, remove this trade, and create a realization
-                                    realizations.push(Realization{
-                                        description: format!("{} sold via {}-{} pair", liquidation.original_symbol.symbol(), liquidation.original_symbol.symbol(), denomination.symbol()),
-                                        acquired_when: Some(when.clone()),
-                                        disposed_when: liquidation.when,
-                                        proceeds: rhs_gained.amount.clone(),
-                                        cost_basis: lhs_offered.amount.clone(),
-                                        gain: (&rhs_gained.amount - &lhs_offered.amount).clone(),
-                                    });
-
-                                } else if rhs_offered.amount > lhs_gained.amount {
+                                if rhs_offered.amount >= lhs_gained.amount {
 
                                     eprintln!("Found lot of {} smaller than current offering {}", lhs_gained.amount, rhs_offered.amount);
 
@@ -170,14 +158,16 @@ impl Portfolio {
                                     realizations.push(realization);
 
                                     // sales
-                                    let sale = Sale{
-                                        when: liquidation.when.clone(),
-                                        original_symbol: liquidation.original_symbol.clone(),
-                                        offered: Amount{amount: (&rhs_offered.amount - &lhs_gained.amount).clone(), symbol: lhs_gained.symbol},
-                                        gained: Amount{amount: remainder.clone(), symbol: rhs_gained.symbol},
-                                    };
-                                    dbg!(&sale);
-                                    processed_liquidations.push(sale);
+                                    if !remainder.is_zero() {
+                                        let sale = Sale{
+                                            when: liquidation.when.clone(),
+                                            original_symbol: liquidation.original_symbol.clone(),
+                                            offered: Amount{amount: (&rhs_offered.amount - &lhs_gained.amount).clone(), symbol: lhs_gained.symbol},
+                                            gained: Amount{amount: remainder.clone(), symbol: rhs_gained.symbol},
+                                        };
+                                        dbg!(&sale);
+                                        processed_liquidations.push(sale);
+                                    }
 
                                 } else if rhs_offered.amount < lhs_gained.amount {
 

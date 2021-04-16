@@ -61,7 +61,10 @@ pub fn report(year: u16, denomination: &Symbol) -> Result<(), Box<dyn Error>> {
         let from_symbol : Symbol = market_components[0].parse().unwrap();
         let to_symbol : Symbol = market_components[1].parse().unwrap();
 
-        if amount > BigDecimal::zero() {
+        if amount >= BigDecimal::zero() {
+            dbg!(&amount);
+            dbg!(&from_symbol);
+
             portfolio.add_trade(&Trade{
                 when: date_of_sale,
                 kind: Kind::Buy{
@@ -75,9 +78,6 @@ pub fn report(year: u16, denomination: &Symbol) -> Result<(), Box<dyn Error>> {
                     },
                 }
             });
-        } else if amount == BigDecimal::zero() {
-            // Ignore zero transactions, they exist, but aren't particularly useful
-            continue;
         } else {
             portfolio.add_trade(&Trade{
                 when: date_of_sale,

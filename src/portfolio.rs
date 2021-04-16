@@ -111,7 +111,7 @@ impl Portfolio {
             let mut processed_liquidations = Vec::<Sale>::new();
 
             for liquidation in &liquidations {
-                eprintln!("processing liquidation [{:?}]", &liquidation);
+                eprintln!("Searching for trade to satisfy liquidation of {:#?}", &liquidation);
 
                 let mut realization_processed = false;
                 let rhs_offered = &liquidation.offered;
@@ -124,18 +124,17 @@ impl Portfolio {
                         // purchased with USD, whenever one of these are found, we can turn a Sale
                         // into a Realization
                         Trade{ ref when, kind: Kind::Buy{ offered: ref lhs_offered, gained: ref lhs_gained } } if &lhs_offered.symbol == denomination && lhs_gained.symbol == rhs_offered.symbol => {
-                            eprintln!("1st match arm [{}:{}][{}:{}]", lhs_offered, lhs_gained, rhs_offered, rhs_gained);
-
                             if realization_processed {
                                 processed_trades.push(trade.clone());
                             } else {
+                                dbg!(&when);
+                                dbg!(&lhs_offered);
+                                dbg!(&lhs_gained);
 
                                 processed += 1;
                                 realization_processed = true;
 
                                 if rhs_offered.amount == lhs_gained.amount {
-
-                                    dbg!(&rhs_offered.amount, "==", &lhs_gained.amount);
 
                                     // Perfect match, remove this trade, and create a realization
                                     realizations.push(Realization{
@@ -149,7 +148,7 @@ impl Portfolio {
 
                                 } else if rhs_offered.amount > lhs_gained.amount {
 
-                                    dbg!(&rhs_offered.amount, ">", &lhs_gained.amount);
+                                    eprintln!("Found lot of {} smaller than current offering {}", lhs_gained.amount, rhs_offered.amount);
 
                                     // [ETH:BTC] [BTC:USD]
                                     //  100:1        2:4000
@@ -159,28 +158,31 @@ impl Portfolio {
                                     let remainder = &rhs_gained.amount - &proceeds;
 
                                     // This trade is larger, so the trade needs to be split
-                                    realizations.push(Realization{
+                                    let realization = Realization{
                                         description: format!("{} sold via {}-{} pair", liquidation.original_symbol.symbol(), liquidation.original_symbol.symbol(), denomination.symbol()),
                                         acquired_when: Some(when.clone()),
                                         disposed_when: liquidation.when.clone(),
                                         proceeds: proceeds.clone(),
                                         cost_basis: lhs_offered.amount.clone(),
                                         gain: (&proceeds - &lhs_offered.amount).clone(),
-                                    });
+                                    };
+                                    dbg!(&realization);
+                                    realizations.push(realization);
 
-                                    eprintln!("putting unfulfilled part in backlog {} {} to get {} {}", lhs_offered.amount, lhs_offered.symbol.symbol(), lhs_gained.amount, lhs_gained.symbol.symbol());
-                                    // Put the unfulfilled remainder of the sale back into the list of
                                     // sales
-                                    processed_liquidations.push(Sale{
+                                    let sale = Sale{
                                         when: liquidation.when.clone(),
                                         original_symbol: liquidation.original_symbol.clone(),
                                         offered: Amount{amount: (&rhs_offered.amount - &lhs_gained.amount).clone(), symbol: lhs_gained.symbol},
                                         gained: Amount{amount: remainder.clone(), symbol: rhs_gained.symbol},
-                                    });
+                                    };
+                                    dbg!(&sale);
+                                    processed_liquidations.push(sale);
 
                                 } else if rhs_offered.amount < lhs_gained.amount {
 
-                                    dbg!(&rhs_offered.amount, "<", &lhs_gained.amount);
+                                    // eprintln!("Found lot of {} {}\nCreating realization of {} {}\nand remainder of {}\n", lhs_gained.amount);
+                                    eprintln!("Found lot of {} larger than current offering {}", lhs_gained.amount, rhs_offered.amount);
 
                                     // [ETH:BTC] [BTC:USD]
                                     //  200:2        1:2000
@@ -190,7 +192,7 @@ impl Portfolio {
 
                                     // This trade is smaller than the offered amount, so we need to split
                                     let realization = Realization{
-                                        description: format!("{} sold via {}-{} pair", rhs_offered.symbol.symbol(), rhs_offered.symbol.symbol(), denomination.symbol()),
+                                        description: format!("{} sold via {}-{} pair", liquidation.original_symbol.symbol(), liquidation.original_symbol.symbol(), denomination.symbol()),
                                         acquired_when: Some(when.clone()),
                                         disposed_when: liquidation.when.clone(),
                                         proceeds: rhs_gained.amount.clone(),
@@ -210,86 +212,70 @@ impl Portfolio {
                                     dbg!(&trade);
                                     processed_trades.push(trade);
 
+                                    // let sale = Sale{
+                                    //     when: liquidation.when.clone(),
+                                    //     original_symbol: liquidation.original_symbol.clone(),
+                                    //     offered: Amount{amount: (&rhs_offered.amount - &lhs_gained.amount).clone(), symbol: lhs_gained.symbol},
+                                    //     gained: Amount{amount: rhs_offered.amount.clone(), symbol: rhs_gained.symbol},
+                                    // };
+                                    // dbg!(&sale);
+                                    // processed_liquidations.push(sale);
                                 }
                             }
                         }
                         Trade{ ref when, kind: Kind::Buy{ offered: ref lhs_offered, gained: ref lhs_gained } } if &lhs_gained.symbol == &rhs_offered.symbol => {
-                            eprintln!("2nd match arm [{}:{}][{}:{}]", lhs_offered, lhs_gained, rhs_offered, rhs_gained);
-                            processed += 1;
+                            if realization_processed {
+                                processed_trades.push(trade.clone());
+                            } else {
+                                processed += 1;
 
-                            if rhs_offered.amount == lhs_gained.amount {
+                                if rhs_offered.amount == lhs_gained.amount {
 
-                                dbg!(&rhs_offered.amount, "==", &lhs_gained.amount);
+                                    eprintln!("Found 1:1 match of {:?}", &lhs_offered);
 
-                                processed_liquidations.push(Sale{
-                                    when: liquidation.when.clone(),
-                                    original_symbol: liquidation.original_symbol.clone(),
-                                    offered: lhs_offered.clone(),
-                                    gained: rhs_gained.clone(),
-                                });
+                                    processed_liquidations.push(Sale{
+                                        when: liquidation.when.clone(),
+                                        original_symbol: liquidation.original_symbol.clone(),
+                                        offered: lhs_offered.clone(),
+                                        gained: rhs_gained.clone(),
+                                    });
 
-                            } else if rhs_offered.amount > lhs_gained.amount {
+                                } else if rhs_offered.amount > lhs_gained.amount {
 
-                                dbg!(&rhs_offered.amount, ">", &lhs_gained.amount);
+                                    let proceeds = (&lhs_gained.amount / &rhs_offered.amount) * &rhs_gained.amount;
 
-                                let proceeds = (&lhs_gained.amount / &rhs_offered.amount) * &rhs_gained.amount;
+                                    processed_trades.push(Trade{
+                                        when: when.clone(),
+                                        kind: Kind::Buy{
+                                            offered: rhs_offered.clone(),
+                                            gained: Amount{amount: proceeds.clone(), symbol: rhs_offered.symbol},
+                                        }
+                                    });
 
-                                processed_trades.push(Trade{
-                                    when: when.clone(),
-                                    kind: Kind::Buy{
-                                        offered: rhs_offered.clone(),
-                                        gained: Amount{amount: proceeds.clone(), symbol: rhs_offered.symbol},
-                                    }
-                                });
+                                } else if rhs_offered.amount < lhs_gained.amount {
 
-                            } else if rhs_offered.amount < lhs_gained.amount {
+                                    let difference = &lhs_gained.amount - &rhs_offered.amount;
 
-                                dbg!(&rhs_offered.amount, "<", &lhs_gained.amount);
-
-                                let difference = &lhs_gained.amount - &rhs_offered.amount;
-
-                                processed_trades.push(Trade{
-                                    when: when.clone(),
-                                    kind: Kind::Buy{
-                                        offered: rhs_offered.clone(),
-                                        gained: Amount{amount: difference.clone(), symbol: rhs_offered.symbol},
-                                    }
-                                });
-
+                                    processed_trades.push(Trade{
+                                        when: when.clone(),
+                                        kind: Kind::Buy{
+                                            offered: rhs_offered.clone(),
+                                            gained: Amount{amount: difference.clone(), symbol: rhs_offered.symbol},
+                                        }
+                                    });
+                                }
                             }
                         },
-                        Trade{ ref when, kind: Kind::Buy{ offered: ref lhs_offered, gained: ref lhs_gained } } => {
-                            eprintln!("3rd match arm [{}:{}][{}:{}]", lhs_offered, lhs_gained, rhs_offered, rhs_gained);
-
-                            // if rhs_offered.amount == lhs_gained.amount {
-
-                            //     dbg!(&rhs_offered.amount, "==", &lhs_gained.amount);
-
-                            // } else if rhs_offered.amount > lhs_gained.amount {
-
-                            //     dbg!(&rhs_offered.amount, ">", &lhs_gained.amount);
-
-                            // } else if rhs_offered.amount < lhs_gained.amount {
-
-                            //     dbg!(&rhs_offered.amount, "<", &lhs_gained.amount);
-
-                            // }
-
-                            processed_trades.push(trade.clone());
-                        }
                         _ => {
-                            eprintln!("4th match arm [{}:{}]", rhs_offered, rhs_gained);
                             processed_trades.push(trade.clone());
                         },
                     }
                 }
 
-                // eprintln!("trades to process {:?}", processed_trades);
                 trades = processed_trades;
             }
 
             if processed == 0 {
-                eprintln!("nothing was processed... finishing loop");
                 break
             }
 
@@ -305,10 +291,6 @@ impl Portfolio {
                 cost_basis: BigDecimal::zero(),
                 gain: liquidation.gained.amount.clone(),
             });
-        }
-
-        for r in &realizations {
-            eprintln!("{} {:.2}:{:.2}", r.description, r.proceeds, r.cost_basis);
         }
 
         realizations
@@ -491,7 +473,7 @@ mod test {
             }
         });
         portfolio.add_trade(&Trade{
-            when: Utc.ymd(2017, 1, 1).and_hms(0, 0, 0),
+            when: Utc.ymd(2018, 1, 1).and_hms(0, 0, 0),
             kind: Kind::Buy{
                 offered: usd!(1000),
                 gained: btc!(1),
@@ -517,7 +499,7 @@ mod test {
             },
             Realization{
                 description: "BTC sold via BTC-USD pair".into(),
-                acquired_when: Some(Utc.ymd(2017, 1, 1).and_hms(0, 0, 0)),
+                acquired_when: Some(Utc.ymd(2018, 1, 1).and_hms(0, 0, 0)),
                 disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
                 proceeds: BigDecimal::from_f32(2000.).unwrap(),
                 cost_basis: BigDecimal::from_f32(1000.).unwrap(),
@@ -649,21 +631,21 @@ mod test {
         let mut portfolio = Portfolio::new();
 
         portfolio.add_trade(&Trade{
-            when: Utc.ymd(2018, 1, 1).and_hms(0, 0, 0),
+            when: Utc.ymd(2016, 1, 1).and_hms(0, 0, 0),
             kind: Kind::Buy{
                 offered: usd!(100),
                 gained: usdt!(25),
             }
         });
         portfolio.add_trade(&Trade{
-            when: Utc.ymd(2018, 1, 1).and_hms(0, 0, 0),
+            when: Utc.ymd(2016, 1, 2).and_hms(0, 0, 0),
             kind: Kind::Buy{
                 offered: usd!(100),
                 gained: usdt!(25),
             }
         });
         portfolio.add_trade(&Trade{
-            when: Utc.ymd(2018, 1, 1).and_hms(0, 0, 0),
+            when: Utc.ymd(2017, 1, 1).and_hms(0, 0, 0),
             kind: Kind::Buy{
                 offered: usd!(100),
                 gained: usdt!(25),
@@ -677,7 +659,7 @@ mod test {
             }
         });
         portfolio.add_trade(&Trade{
-            when: Utc.ymd(2018, 1, 1).and_hms(0, 0, 0),
+            when: Utc.ymd(2019, 1, 1).and_hms(0, 0, 0),
             kind: Kind::Buy{
                 offered: eth!(2),
                 gained: btc!(0.1),
@@ -685,7 +667,7 @@ mod test {
         });
 
         portfolio.add_trade(&Trade{
-            when: Utc.ymd(2018, 1, 2).and_hms(0, 0, 0),
+            when: Utc.ymd(2020, 1, 2).and_hms(0, 0, 0),
             kind: Kind::Sell{
                 offered: btc!(0.1),
                 gained: usd!(4000),
@@ -696,19 +678,19 @@ mod test {
         assert_eq!(realizations, vec![
             Realization{
                 description: "BTC sold via BTC-USD pair".into(),
-                acquired_when: Some(Utc.ymd(2018, 1, 1).and_hms(0, 0, 0)),
-                disposed_when: Utc.ymd(2018, 1, 2).and_hms(0, 0, 0),
-                proceeds: BigDecimal::from_f32(3953.).unwrap(),
-                cost_basis: BigDecimal::from_f32(47.).unwrap(),
-                gain: BigDecimal::from_f32(3906.).unwrap(),
+                acquired_when: Some(Utc.ymd(2016, 1, 1).and_hms(0, 0, 0)),
+                disposed_when: Utc.ymd(2020, 1, 2).and_hms(0, 0, 0),
+                proceeds: BigDecimal::from_f32(2500.).unwrap(),
+                cost_basis: BigDecimal::from_f32(100.).unwrap(),
+                gain: BigDecimal::from_f32(2400.).unwrap(),
             },
             Realization{
                 description: "BTC sold via BTC-USD pair".into(),
-                acquired_when: Some(Utc.ymd(2018, 1, 1).and_hms(0, 0, 0)),
-                disposed_when: Utc.ymd(2018, 1, 2).and_hms(0, 0, 0),
-                proceeds: BigDecimal::from_f32(3953.).unwrap(),
-                cost_basis: BigDecimal::from_f32(47.).unwrap(),
-                gain: BigDecimal::from_f32(3906.).unwrap(),
+                acquired_when: Some(Utc.ymd(2016, 1, 2).and_hms(0, 0, 0)),
+                disposed_when: Utc.ymd(2020, 1, 2).and_hms(0, 0, 0),
+                proceeds: BigDecimal::from_f32(1500.).unwrap(),
+                cost_basis: BigDecimal::from_f32(60.).unwrap(),
+                gain: BigDecimal::from_f32(1440.).unwrap(),
             }
         ]);
 

@@ -138,7 +138,7 @@ impl Portfolio {
 
                                     // Perfect match, remove this trade, and create a realization
                                     realizations.push(Realization{
-                                        description: format!("{} sold via {}-{} pair", rhs_offered.symbol.symbol(), rhs_offered.symbol.symbol(), denomination.symbol()),
+                                        description: format!("{} sold via {}-{} pair", liquidation.original_symbol.symbol(), liquidation.original_symbol.symbol(), denomination.symbol()),
                                         acquired_when: Some(when.clone()),
                                         disposed_when: liquidation.when,
                                         proceeds: rhs_gained.amount.clone(),
@@ -577,7 +577,7 @@ mod test {
         let realizations = portfolio.realizations(&USD);
         assert_eq!(realizations, vec![
             Realization{
-                description: "BTC sold via BTC-USD pair".into(),
+                description: "USDT sold via USDT-USD pair".into(),
                 acquired_when: Some(Utc.ymd(2017, 1, 1).and_hms(0, 0, 0)),
                 disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
                 proceeds: BigDecimal::from_f32(2000.).unwrap(),
@@ -616,7 +616,7 @@ mod test {
         let realizations = portfolio.realizations(&USD);
         assert_eq!(realizations, vec![
             Realization{
-                description: "BTC sold via BTC-USD pair".into(),
+                description: "USDT sold via USDT-USD pair".into(),
                 acquired_when: Some(Utc.ymd(2017, 1, 1).and_hms(0, 0, 0)),
                 disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
                 proceeds: BigDecimal::from_f32(2000.).unwrap(),

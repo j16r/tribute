@@ -149,7 +149,7 @@ impl Portfolio {
 
                                 // This trade is larger, so the trade needs to be split
                                 let realization = Realization{
-                                    description: description,
+                                    description,
                                     acquired_when: Some(when.clone()),
                                     disposed_when: liquidation.when.clone(),
                                     proceeds: proceeds.clone(),
@@ -178,25 +178,30 @@ impl Portfolio {
                                 eprintln!("Found lot of {} larger than current offering {}", lhs_gained.amount, rhs_offered.amount);
 
                                 let divisor = &rhs_offered.amount / &lhs_gained.amount;
-                                let proceeds = &divisor * &lhs_offered.amount;
+                                let proceeds = rhs_gained.amount.clone();
+                                let cost_basis = (&lhs_offered.amount * &divisor).clone();
+                                let gain = &proceeds - &cost_basis;
 
                                 // This trade is smaller than the offered amount, so we need to split
                                 let realization = Realization{
-                                    description: description,
+                                    description,
                                     acquired_when: Some(when.clone()),
                                     disposed_when: liquidation.when.clone(),
-                                    proceeds: rhs_gained.amount.clone(),
-                                    cost_basis: proceeds.clone(),
-                                    gain: (&rhs_gained.amount - &proceeds).clone(),
+                                    proceeds: proceeds.clone(),
+                                    cost_basis: cost_basis.clone(),
+                                    gain: gain.clone(),
                                 };
                                 dbg!(&realization);
                                 realizations.push(realization);
 
+                                let remainder_offered = (&lhs_offered.amount * &divisor).clone();
+                                let remainder_gained = (&lhs_gained.amount - &rhs_offered.amount).clone();
+
                                 let trade = Trade{
                                     when: when.clone(),
                                     kind: Kind::Buy{
-                                        offered: Amount{amount: (&lhs_offered.amount - proceeds).clone(), symbol: rhs_gained.symbol},
-                                        gained: Amount{amount: rhs_offered.amount.clone(), symbol: rhs_offered.symbol},
+                                        offered: Amount{amount: remainder_offered, symbol: lhs_offered.symbol},
+                                        gained: Amount{amount: remainder_gained, symbol: lhs_gained.symbol},
                                     }
                                 };
                                 dbg!(&trade);

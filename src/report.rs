@@ -62,9 +62,6 @@ pub fn report(year: u16, denomination: &Symbol) -> Result<(), Box<dyn Error>> {
         let to_symbol : Symbol = market_components[1].parse().unwrap();
 
         if amount >= BigDecimal::zero() {
-            dbg!(&amount);
-            dbg!(&from_symbol);
-
             portfolio.add_trade(&Trade{
                 when: date_of_sale,
                 kind: Kind::Buy{

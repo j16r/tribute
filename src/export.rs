@@ -32,7 +32,7 @@ pub fn export(config: &Config) -> Result<(), Box<dyn Error>> {
                 ref key,
                 ref secret,
                 ref passphrase,
-            } => coinbase_pro::transactions(key, secret, passphrase)?,
+            } => coinbase_pro::transactions(key, secret, passphrase, config.denomination())?,
             Exchange::Coinbase {
                 ref key,
                 ref secret,

@@ -11,6 +11,7 @@ use futures::stream::{Stream, StreamExt};
 use tokio::runtime::Runtime;
 use uuid::Uuid;
 
+use crate::symbol::Symbol;
 use crate::types::{DateTime, Transaction};
 
 const PROVIDER: &str = "coinbase-pro";
@@ -67,23 +68,24 @@ impl ThrottledClient {
         Ok(rate)
     }
 
-    async fn get_usd_rate(
+    async fn get_denomination_rate(
         &self,
         product_id: &str,
         time_of_trade: DateTime,
+        denomination: Symbol,
     ) -> Result<BigDecimal, Box<dyn Error>> {
         thread::sleep(Duration::from_millis(350));
 
-        if let Ok(rate) = self.get_rate_at(product_id, time_of_trade).await {
+        if let Ok(token_rate) = self.get_rate_at(product_id, time_of_trade).await {
             if let Some(product_lhs) = product_rhs(product_id) {
-                if product_lhs == "USD" {
-                    return Ok(rate);
+                if product_lhs == denomination.symbol() {
+                    return Ok(token_rate);
                 }
 
-                let next_product_id = format!("{}-USD", product_lhs);
+                let next_product_id = format!("{}-{}", product_lhs, denomination.symbol());
 
-                if let Ok(usd_rate) = self.get_rate_at(&next_product_id, time_of_trade).await {
-                    return Ok(rate * usd_rate);
+                if let Ok(denomination_rate) = self.get_rate_at(&next_product_id, time_of_trade).await {
+                    return Ok(token_rate * denomination_rate);
                 }
             }
         }
@@ -115,15 +117,17 @@ pub fn transactions(
     key: &str,
     secret: &str,
     passphrase: &str,
+    denomination: Symbol,
 ) -> Result<Vec<Transaction>, Box<dyn Error>> {
     let rt = Runtime::new().unwrap();
-    rt.block_on(fetch_transactions(key, secret, passphrase))
+    rt.block_on(fetch_transactions(key, secret, passphrase, denomination))
 }
 
 async fn fetch_transactions(
     key: &str,
     secret: &str,
     passphrase: &str,
+    denomination: Symbol,
 ) -> Result<Vec<Transaction>, Box<dyn Error>> {
     let client = ThrottledClient::new(key, secret, passphrase);
 
@@ -131,17 +135,22 @@ async fn fetch_transactions(
 
     let accounts = client.get_accounts().await.unwrap();
     for account in accounts {
+        if account.currency == denomination.symbol() {
+            continue;
+        }
+
         let account_hist_stream = client.get_account_hist_stream(account.id);
         pin_mut!(account_hist_stream);
 
         while let Some(account_hist_result) = account_hist_stream.next().await {
             for trade in account_hist_result? {
+                dbg!(&trade);
                 if let AccountHistoryDetails::Match { product_id, trade_id, .. } = trade.details {
                     let time_of_trade = trade.created_at;
 
                     let rate = client.get_rate_at(&product_id, time_of_trade).await?;
-                    let usd_rate = client.get_usd_rate(&product_id, time_of_trade).await?;
-                    let usd_amount = BigDecimal::from_f64(trade.amount).unwrap() * &usd_rate;
+                    let denomination_rate = client.get_denomination_rate(&product_id, time_of_trade, denomination).await?;
+                    let amount = BigDecimal::from_f64(trade.amount).unwrap() * &denomination_rate;
 
                     let transaction = Transaction {
                         id: trade_id.to_string(),
@@ -149,8 +158,8 @@ async fn fetch_transactions(
                         token: account.currency.clone(),
                         amount: BigDecimal::from_f64(trade.amount).unwrap(),
                         rate,
-                        usd_rate,
-                        usd_amount,
+                        usd_rate: denomination_rate,
+                        usd_amount: amount,
                         created_at: Some(time_of_trade),
                         provider: PROVIDER,
                     };

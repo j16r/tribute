@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use bigdecimal::{BigDecimal, Zero};
+use bigdecimal::{BigDecimal, FromPrimitive, Zero};
 
 use crate::amount::Amount;
 use crate::symbol::Symbol;
@@ -119,141 +119,127 @@ impl Portfolio {
 
                 let mut processed_trades = Vec::<Trade>::new();
                 for trade in &trades {
+                    if realization_processed {
+                        processed_trades.push(trade.clone());
+                        continue;
+                    }
+
                     match trade {
                         // So this matches a purchase using the taxable denomination, e.g: ETH
                         // purchased with USD, whenever one of these are found, we can turn a Sale
                         // into a Realization
                         Trade{ ref when, kind: Kind::Buy{ offered: ref lhs_offered, gained: ref lhs_gained } } if &lhs_offered.symbol == denomination && lhs_gained.symbol == rhs_offered.symbol => {
-                            if realization_processed {
-                                processed_trades.push(trade.clone());
-                            } else {
-                                dbg!(&when);
-                                dbg!(&lhs_offered);
-                                dbg!(&lhs_gained);
+                            dbg!(&when);
+                            dbg!(&lhs_offered);
+                            dbg!(&lhs_gained);
 
-                                processed += 1;
-                                realization_processed = true;
+                            processed += 1;
+                            realization_processed = true;
 
-                                if rhs_offered.amount >= lhs_gained.amount {
+                            let description =
+                                format!("{} sold via {}-{} pair", liquidation.original_symbol.symbol(), liquidation.original_symbol.symbol(), denomination.symbol());
+                            if lhs_gained.amount <= rhs_offered.amount {
 
-                                    eprintln!("Found lot of {} smaller than current offering {}", lhs_gained.amount, rhs_offered.amount);
+                                eprintln!("Found lot of {} smaller than current offering {}", lhs_gained.amount, rhs_offered.amount);
 
-                                    // [ETH:BTC] [BTC:USD]
-                                    //  100:1        2:4000
+                                let divisor = &lhs_gained.amount / &rhs_offered.amount;
+                                let proceeds = (&rhs_gained.amount * &divisor).clone();
+                                let cost_basis = &lhs_offered.amount;
+                                let gain = &proceeds - cost_basis;
 
-                                    let divisor = &lhs_gained.amount / &rhs_offered.amount;
-                                    let proceeds = &divisor * &rhs_gained.amount;
-                                    let remainder = &rhs_gained.amount - &proceeds;
+                                // This trade is larger, so the trade needs to be split
+                                let realization = Realization{
+                                    description: description,
+                                    acquired_when: Some(when.clone()),
+                                    disposed_when: liquidation.when.clone(),
+                                    proceeds: proceeds.clone(),
+                                    cost_basis: cost_basis.clone(),
+                                    gain: gain.clone(),
+                                };
+                                dbg!(&realization);
+                                realizations.push(realization);
 
-                                    // This trade is larger, so the trade needs to be split
-                                    let realization = Realization{
-                                        description: format!("{} sold via {}-{} pair", liquidation.original_symbol.symbol(), liquidation.original_symbol.symbol(), denomination.symbol()),
-                                        acquired_when: Some(when.clone()),
-                                        disposed_when: liquidation.when.clone(),
-                                        proceeds: proceeds.clone(),
-                                        cost_basis: lhs_offered.amount.clone(),
-                                        gain: (&proceeds - &lhs_offered.amount).clone(),
+                                let remainder_gained = (&rhs_gained.amount - &proceeds).clone();
+                                let remainder_offered = (&rhs_offered.amount - &rhs_offered.amount * &divisor).clone();
+
+                                if !remainder_gained.is_zero() {
+                                    let sale = Sale{
+                                        when: liquidation.when.clone(),
+                                        original_symbol: liquidation.original_symbol.clone(),
+                                        offered: Amount{amount: remainder_offered, symbol: rhs_offered.symbol},
+                                        gained: Amount{amount: remainder_gained, symbol: rhs_gained.symbol},
                                     };
-                                    dbg!(&realization);
-                                    realizations.push(realization);
-
-                                    // sales
-                                    if !remainder.is_zero() {
-                                        let sale = Sale{
-                                            when: liquidation.when.clone(),
-                                            original_symbol: liquidation.original_symbol.clone(),
-                                            offered: Amount{amount: (&rhs_offered.amount - &lhs_gained.amount).clone(), symbol: lhs_gained.symbol},
-                                            gained: Amount{amount: remainder.clone(), symbol: rhs_gained.symbol},
-                                        };
-                                        dbg!(&sale);
-                                        processed_liquidations.push(sale);
-                                    }
-
-                                } else if rhs_offered.amount < lhs_gained.amount {
-
-                                    // eprintln!("Found lot of {} {}\nCreating realization of {} {}\nand remainder of {}\n", lhs_gained.amount);
-                                    eprintln!("Found lot of {} larger than current offering {}", lhs_gained.amount, rhs_offered.amount);
-
-                                    // [ETH:BTC] [BTC:USD]
-                                    //  200:2        1:2000
-
-                                    let divisor = &rhs_offered.amount / &lhs_gained.amount;
-                                    let proceeds = &divisor * &lhs_offered.amount;
-
-                                    // This trade is smaller than the offered amount, so we need to split
-                                    let realization = Realization{
-                                        description: format!("{} sold via {}-{} pair", liquidation.original_symbol.symbol(), liquidation.original_symbol.symbol(), denomination.symbol()),
-                                        acquired_when: Some(when.clone()),
-                                        disposed_when: liquidation.when.clone(),
-                                        proceeds: rhs_gained.amount.clone(),
-                                        cost_basis: proceeds.clone(),
-                                        gain: (&rhs_gained.amount - &proceeds).clone(),
-                                    };
-                                    dbg!(&realization);
-                                    realizations.push(realization);
-
-                                    let trade = Trade{
-                                        when: when.clone(),
-                                        kind: Kind::Buy{
-                                            offered: Amount{amount: (&lhs_offered.amount - proceeds).clone(), symbol: rhs_gained.symbol},
-                                            gained: Amount{amount: rhs_offered.amount.clone(), symbol: rhs_offered.symbol},
-                                        }
-                                    };
-                                    dbg!(&trade);
-                                    processed_trades.push(trade);
-
-                                    // let sale = Sale{
-                                    //     when: liquidation.when.clone(),
-                                    //     original_symbol: liquidation.original_symbol.clone(),
-                                    //     offered: Amount{amount: (&rhs_offered.amount - &lhs_gained.amount).clone(), symbol: lhs_gained.symbol},
-                                    //     gained: Amount{amount: rhs_offered.amount.clone(), symbol: rhs_gained.symbol},
-                                    // };
-                                    // dbg!(&sale);
-                                    // processed_liquidations.push(sale);
+                                    dbg!(&sale);
+                                    processed_liquidations.push(sale);
                                 }
+
+                            } else {
+
+                                eprintln!("Found lot of {} larger than current offering {}", lhs_gained.amount, rhs_offered.amount);
+
+                                let divisor = &rhs_offered.amount / &lhs_gained.amount;
+                                let proceeds = &divisor * &lhs_offered.amount;
+
+                                // This trade is smaller than the offered amount, so we need to split
+                                let realization = Realization{
+                                    description: description,
+                                    acquired_when: Some(when.clone()),
+                                    disposed_when: liquidation.when.clone(),
+                                    proceeds: rhs_gained.amount.clone(),
+                                    cost_basis: proceeds.clone(),
+                                    gain: (&rhs_gained.amount - &proceeds).clone(),
+                                };
+                                dbg!(&realization);
+                                realizations.push(realization);
+
+                                let trade = Trade{
+                                    when: when.clone(),
+                                    kind: Kind::Buy{
+                                        offered: Amount{amount: (&lhs_offered.amount - proceeds).clone(), symbol: rhs_gained.symbol},
+                                        gained: Amount{amount: rhs_offered.amount.clone(), symbol: rhs_offered.symbol},
+                                    }
+                                };
+                                dbg!(&trade);
+                                processed_trades.push(trade);
                             }
                         }
                         Trade{ ref when, kind: Kind::Buy{ offered: ref lhs_offered, gained: ref lhs_gained } } if &lhs_gained.symbol == &rhs_offered.symbol => {
-                            if realization_processed {
-                                processed_trades.push(trade.clone());
-                            } else {
-                                processed += 1;
+                            processed += 1;
 
-                                if rhs_offered.amount == lhs_gained.amount {
+                            if rhs_offered.amount == lhs_gained.amount {
 
-                                    eprintln!("Found 1:1 match of {:?}", &lhs_offered);
+                                // eprintln!("Found 1:1 match of {:?}", &lhs_offered);
 
-                                    processed_liquidations.push(Sale{
-                                        when: liquidation.when.clone(),
-                                        original_symbol: liquidation.original_symbol.clone(),
-                                        offered: lhs_offered.clone(),
-                                        gained: rhs_gained.clone(),
-                                    });
+                                processed_liquidations.push(Sale{
+                                    when: liquidation.when.clone(),
+                                    original_symbol: liquidation.original_symbol.clone(),
+                                    offered: lhs_offered.clone(),
+                                    gained: rhs_gained.clone(),
+                                });
 
-                                } else if rhs_offered.amount > lhs_gained.amount {
+                            } else if rhs_offered.amount > lhs_gained.amount {
 
-                                    let proceeds = (&lhs_gained.amount / &rhs_offered.amount) * &rhs_gained.amount;
+                                let proceeds = (&lhs_gained.amount / &rhs_offered.amount) * &rhs_gained.amount;
 
-                                    processed_trades.push(Trade{
-                                        when: when.clone(),
-                                        kind: Kind::Buy{
-                                            offered: rhs_offered.clone(),
-                                            gained: Amount{amount: proceeds.clone(), symbol: rhs_offered.symbol},
-                                        }
-                                    });
+                                processed_trades.push(Trade{
+                                    when: when.clone(),
+                                    kind: Kind::Buy{
+                                        offered: rhs_offered.clone(),
+                                        gained: Amount{amount: proceeds.clone(), symbol: rhs_offered.symbol},
+                                    }
+                                });
 
-                                } else if rhs_offered.amount < lhs_gained.amount {
+                            } else if rhs_offered.amount < lhs_gained.amount {
 
-                                    let difference = &lhs_gained.amount - &rhs_offered.amount;
+                                let difference = &lhs_gained.amount - &rhs_offered.amount;
 
-                                    processed_trades.push(Trade{
-                                        when: when.clone(),
-                                        kind: Kind::Buy{
-                                            offered: rhs_offered.clone(),
-                                            gained: Amount{amount: difference.clone(), symbol: rhs_offered.symbol},
-                                        }
-                                    });
-                                }
+                                processed_trades.push(Trade{
+                                    when: when.clone(),
+                                    kind: Kind::Buy{
+                                        offered: rhs_offered.clone(),
+                                        gained: Amount{amount: difference.clone(), symbol: rhs_offered.symbol},
+                                    }
+                                });
                             }
                         },
                         _ => {

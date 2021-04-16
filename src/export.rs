@@ -6,6 +6,19 @@ use crate::config::{Config, Exchange};
 use crate::types::{format_amount, format_usd_amount, Transaction};
 use crate::{coinbase, coinbase_pro, ethereum, etherscan};
 
+#[derive(Debug, Deserialize)]
+struct Record {
+    id: String,
+    market: String,
+    token: String,
+    amount: String,
+    rate: String,
+    usd_rate: String,
+    usd_amount: String,
+    created_at: String,
+    provider: String,
+}
+
 pub fn export(config: &Config) -> Result<(), Box<dyn Error>> {
     let mut exchange_transactions: Vec<Vec<Transaction>> = Vec::new();
 

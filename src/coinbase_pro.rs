@@ -5,7 +5,10 @@ use std::time::Duration;
 use bigdecimal::{BigDecimal, Zero, FromPrimitive};
 use coinbase_pro_rs::structs::private::*;
 use coinbase_pro_rs::structs::public::*;
-use coinbase_pro_rs::{CBError, Private, Sync, MAIN_URL};
+use coinbase_pro_rs::{CBError, Private, ASync, MAIN_URL};
+use futures::pin_mut;
+use futures::stream::{Stream, StreamExt};
+use tokio::runtime::Runtime;
 use uuid::Uuid;
 
 use crate::types::{DateTime, Transaction};
@@ -28,16 +31,16 @@ fn test_product_rhs() {
 }
 
 struct ThrottledClient {
-    client: Private<Sync>,
+    client: Private<ASync>,
 }
 
 impl ThrottledClient {
     fn new(key: &str, secret: &str, passphrase: &str) -> ThrottledClient {
-        let client: Private<Sync> = Private::new(MAIN_URL, key, secret, passphrase);
+        let client: Private<ASync> = Private::new(MAIN_URL, key, secret, passphrase);
         ThrottledClient { client }
     }
 
-    fn get_rate_at(
+    async fn get_rate_at(
         &self,
         product_id: &str,
         time_of_trade: DateTime,
@@ -53,6 +56,7 @@ impl ThrottledClient {
             .client
             .public()
             .get_candles(&product_id, start, end, Granularity::M1)
+            .await
             .unwrap();
 
         let mut rate = BigDecimal::zero();
@@ -63,12 +67,14 @@ impl ThrottledClient {
         Ok(rate)
     }
 
-    fn get_usd_rate(
+    async fn get_usd_rate(
         &self,
         product_id: &str,
         time_of_trade: DateTime,
     ) -> Result<BigDecimal, Box<dyn Error>> {
-        if let Ok(rate) = self.get_rate_at(product_id, time_of_trade) {
+        thread::sleep(Duration::from_millis(350));
+
+        if let Ok(rate) = self.get_rate_at(product_id, time_of_trade).await {
             if let Some(product_lhs) = product_rhs(product_id) {
                 if product_lhs == "USD" {
                     return Ok(rate);
@@ -76,7 +82,7 @@ impl ThrottledClient {
 
                 let next_product_id = format!("{}-USD", product_lhs);
 
-                if let Ok(usd_rate) = self.get_rate_at(&next_product_id, time_of_trade) {
+                if let Ok(usd_rate) = self.get_rate_at(&next_product_id, time_of_trade).await {
                     return Ok(rate * usd_rate);
                 }
             }
@@ -85,16 +91,36 @@ impl ThrottledClient {
         Ok(BigDecimal::zero())
     }
 
-    fn get_accounts(&self) -> Result<Vec<Account>, CBError> {
-        self.client.get_accounts()
+    async fn get_accounts(&self) -> Result<Vec<Account>, CBError> {
+        thread::sleep(Duration::from_millis(350));
+
+        self.client.get_accounts().await
     }
 
-    fn get_account_hist(&self, id: Uuid) -> Result<Vec<AccountHistory>, CBError> {
-        self.client.get_account_hist(id)
+    async fn get_account_hist(&self, id: Uuid) -> Result<Vec<AccountHistory>, CBError> {
+        thread::sleep(Duration::from_millis(350));
+
+        self.client.get_account_hist(id).await
     }
+
+    fn get_account_hist_stream<'a>(&'a self, id: Uuid) -> impl Stream<Item = Result<Vec<AccountHistory>, CBError>> + 'a {
+        thread::sleep(Duration::from_millis(350));
+
+        self.client.get_account_hist_stream(id)
+    }
+
 }
 
 pub fn transactions(
+    key: &str,
+    secret: &str,
+    passphrase: &str,
+) -> Result<Vec<Transaction>, Box<dyn Error>> {
+    let rt = Runtime::new().unwrap();
+    rt.block_on(fetch_transactions(key, secret, passphrase))
+}
+
+async fn fetch_transactions(
     key: &str,
     secret: &str,
     passphrase: &str,
@@ -103,32 +129,33 @@ pub fn transactions(
 
     let mut transactions = Vec::new();
 
-    let accounts = client.get_accounts().unwrap();
+    let accounts = client.get_accounts().await.unwrap();
     for account in accounts {
-        if account.currency == "USD" {
-            continue;
-        }
+        let account_hist_stream = client.get_account_hist_stream(account.id);
+        pin_mut!(account_hist_stream);
 
-        for trade in client.get_account_hist(account.id).unwrap() {
-            if let AccountHistoryDetails::Match { product_id, trade_id, .. } = trade.details {
-                let time_of_trade = trade.created_at;
+        while let Some(account_hist_result) = account_hist_stream.next().await {
+            for trade in account_hist_result? {
+                if let AccountHistoryDetails::Match { product_id, trade_id, .. } = trade.details {
+                    let time_of_trade = trade.created_at;
 
-                let rate = client.get_rate_at(&product_id, time_of_trade)?;
-                let usd_rate = client.get_usd_rate(&product_id, time_of_trade)?;
-                let usd_amount = BigDecimal::from_f64(trade.amount).unwrap() * &usd_rate;
+                    let rate = client.get_rate_at(&product_id, time_of_trade).await?;
+                    let usd_rate = client.get_usd_rate(&product_id, time_of_trade).await?;
+                    let usd_amount = BigDecimal::from_f64(trade.amount).unwrap() * &usd_rate;
 
-                let transaction = Transaction {
-                    id: trade_id.to_string(),
-                    market: product_id,
-                    token: account.currency.clone(),
-                    amount: BigDecimal::from_f64(trade.amount).unwrap(),
-                    rate,
-                    usd_rate,
-                    usd_amount,
-                    created_at: Some(time_of_trade),
-                    provider: PROVIDER,
-                };
-                transactions.push(transaction);
+                    let transaction = Transaction {
+                        id: trade_id.to_string(),
+                        market: product_id,
+                        token: account.currency.clone(),
+                        amount: BigDecimal::from_f64(trade.amount).unwrap(),
+                        rate,
+                        usd_rate,
+                        usd_amount,
+                        created_at: Some(time_of_trade),
+                        provider: PROVIDER,
+                    };
+                    transactions.push(transaction);
+                }
             }
         }
     }

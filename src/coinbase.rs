@@ -34,6 +34,9 @@ async fn fetch_transactions(key: &str, secret: &str) -> Result<Vec<Transaction>>
                 let code = account.currency.code;
                 while let Some(transactions_result) = transactions_stream.next().await {
                     for trade in transactions_result? {
+                        if trade.r#type != "buy" && trade.r#type != "sell" {
+                            continue
+                        }
                         let usd_amount = trade.native_amount.amount;
                         let trade_amount = trade.amount.amount;
                         let usd_rate = &usd_amount / &trade_amount;

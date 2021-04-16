@@ -82,7 +82,9 @@ impl Config {
     }
 
     pub fn denomination(&self) -> Symbol {
-        self.denomination.as_ref().unwrap_or(&"USD".to_string()).parse().unwrap()
+        self.denomination.as_ref()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or_else(|| USD)
     }
 }
 

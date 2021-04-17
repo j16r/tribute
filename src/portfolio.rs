@@ -40,7 +40,7 @@ pub struct Trade {
     pub kind: Kind,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Sale {
     when: DateTime,
     original_symbol: Symbol,
@@ -64,14 +64,14 @@ impl Portfolio {
         self.trades.push(trade.clone());
     }
 
-    fn buy(&mut self, date: DateTime, offered: &Amount, gained: &Amount) {
+    fn buy(&mut self, date: DateTime, _offered: &Amount, gained: &Amount) {
         let wallet = self.wallets
             .entry(gained.symbol)
             .or_insert_with(|| Wallet::new(&gained.symbol));
         wallet.add_lot(&gained.amount, &gained.amount, date);
     }
 
-    fn sell(&mut self, date: DateTime, offered: &Amount, gained: &Amount) {
+    fn sell(&mut self, _date: DateTime, offered: &Amount, gained: &Amount) {
         let wallet = self.wallets
             .entry(offered.symbol)
             .or_insert_with(|| Wallet::new(&gained.symbol));
@@ -117,7 +117,7 @@ impl Portfolio {
                 let rhs_offered = &liquidation.offered;
                 let rhs_gained = &liquidation.gained;
 
-                let mut processed_trades = Vec::<Trade>::new();
+                let mut processed_trades: Vec<Trade> = Vec::new();
                 for trade in &trades {
                     if realization_processed {
                         processed_trades.push(trade.clone());
@@ -252,6 +252,10 @@ impl Portfolio {
                         },
                     }
                 }
+
+                // if !realization_processed {
+                //     processed_liquidations.push(liquidation.clone());
+                // }
 
                 trades = processed_trades;
             }

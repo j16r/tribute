@@ -126,7 +126,6 @@ pub fn load_config(path: Option<PathBuf>) -> Result<Config, ConfigError> {
 #[cfg(test)]
 mod test {
     use std::fs;
-    use std::path::PathBuf;
     use std::str::FromStr;
 
     use bigdecimal::{BigDecimal, FromPrimitive};
@@ -242,7 +241,6 @@ mod test {
     #[must_use]
     struct Project {
         root: TempDir,
-        config_path: PathBuf,
     }
 
     fn project(body: &str) -> io::Result<Project> {
@@ -255,7 +253,6 @@ mod test {
 
         Ok(Project {
             root: project_root,
-            config_path: config_path,
         })
     }
 }

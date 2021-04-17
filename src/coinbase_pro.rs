@@ -99,12 +99,6 @@ impl ThrottledClient {
         self.client.get_accounts().await
     }
 
-    async fn get_account_hist(&self, id: Uuid) -> Result<Vec<AccountHistory>, CBError> {
-        thread::sleep(Duration::from_millis(350));
-
-        self.client.get_account_hist(id).await
-    }
-
     fn get_account_hist_stream<'a>(&'a self, id: Uuid) -> impl Stream<Item = Result<Vec<AccountHistory>, CBError>> + 'a {
         thread::sleep(Duration::from_millis(350));
 

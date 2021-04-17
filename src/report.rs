@@ -64,7 +64,7 @@ pub fn report(year: u16, denomination: &Symbol) -> Result<(), Box<dyn Error>> {
         if amount >= BigDecimal::zero() {
             portfolio.add_trade(&Trade{
                 when: date_of_sale,
-                kind: Kind::Buy{
+                kind: Kind::Trade{
                     offered: Amount{
                         amount: &rate * &amount.abs(),
                         symbol: to_symbol,
@@ -78,7 +78,7 @@ pub fn report(year: u16, denomination: &Symbol) -> Result<(), Box<dyn Error>> {
         } else {
             portfolio.add_trade(&Trade{
                 when: date_of_sale,
-                kind: Kind::Sell{
+                kind: Kind::Trade{
                     offered: Amount{
                         amount: amount.abs().clone(),
                         symbol: from_symbol,
@@ -91,8 +91,6 @@ pub fn report(year: u16, denomination: &Symbol) -> Result<(), Box<dyn Error>> {
             });
         }
     }
-
-    eprintln!("Portfolio:\n\n{:#?}\n", &portfolio);
 
     let mut writer = csv::Writer::from_writer(io::stdout());
 
@@ -137,5 +135,8 @@ pub fn report(year: u16, denomination: &Symbol) -> Result<(), Box<dyn Error>> {
     ])?;
 
     writer.flush()?;
+
+    eprintln!("Portfolio:\n\n{:#?}\n", &portfolio);
+
     Ok(())
 }

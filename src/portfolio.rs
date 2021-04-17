@@ -16,11 +16,7 @@ pub struct Portfolio {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Kind {
-    Buy{
-        offered: Amount,
-        gained: Amount,
-    },
-    Sell{
+    Trade{
         offered: Amount,
         gained: Amount,
     },
@@ -58,8 +54,10 @@ impl Portfolio {
 
     pub fn add_trade(&mut self, trade: &Trade) {
         match trade.kind {
-            Kind::Buy{ref offered, ref gained} => self.buy(trade.when, offered, gained),
-            Kind::Sell{ref offered, ref gained} => self.sell(trade.when, offered, gained),
+            Kind::Trade{ref offered, ref gained} => {
+                self.buy(trade.when, offered, gained);
+                self.sell(trade.when, gained, offered);
+            }
         };
         self.trades.push(trade.clone());
     }
@@ -84,22 +82,15 @@ impl Portfolio {
         // First step, remove all the sales to the final denomination into their own collection,
         // e.g: BTC->USD
         let mut liquidations: Vec<Sale> = trades.drain_filter(|trade| {
-            if let Trade{ kind: Kind::Sell{ ref gained, .. } , .. } = trade {
-                return &gained.symbol == denomination;
-            } else if let Trade{ kind: Kind::Sell{ ref gained, .. } , .. } = trade {
-                return &gained.symbol == denomination;
-            }
-            false
+            let Trade{ kind: Kind::Trade{ ref gained, .. } , .. } = trade;
+            &gained.symbol == denomination
         }).map(|trade| {
-            if let Trade{ ref when, kind: Kind::Sell{ ref offered, ref gained } } = trade {
-                Sale{
-                    when: when.clone(),
-                    original_symbol: offered.symbol.clone(),
-                    offered: offered.clone(),
-                    gained: gained.clone(),
-                }
-            } else {
-                unreachable!();
+            let Trade{ ref when, kind: Kind::Trade{ ref offered, ref gained } } = trade;
+            Sale{
+                when: when.clone(),
+                original_symbol: offered.symbol.clone(),
+                offered: offered.clone(),
+                gained: gained.clone(),
             }
         }).collect();
 
@@ -128,7 +119,7 @@ impl Portfolio {
                         // So this matches a purchase using the taxable denomination, e.g: ETH
                         // purchased with USD, whenever one of these are found, we can turn a Sale
                         // into a Realization
-                        Trade{ ref when, kind: Kind::Buy{ offered: ref lhs_offered, gained: ref lhs_gained } } if &lhs_offered.symbol == denomination && lhs_gained.symbol == rhs_offered.symbol => {
+                        Trade{ ref when, kind: Kind::Trade{ offered: ref lhs_offered, gained: ref lhs_gained } } if &lhs_offered.symbol == denomination && lhs_gained.symbol == rhs_offered.symbol => {
                             dbg!(&when);
                             dbg!(&lhs_offered);
                             dbg!(&lhs_gained);
@@ -199,7 +190,7 @@ impl Portfolio {
 
                                 let trade = Trade{
                                     when: when.clone(),
-                                    kind: Kind::Buy{
+                                    kind: Kind::Trade{
                                         offered: Amount{amount: remainder_offered, symbol: lhs_offered.symbol},
                                         gained: Amount{amount: remainder_gained, symbol: lhs_gained.symbol},
                                     }
@@ -208,7 +199,7 @@ impl Portfolio {
                                 processed_trades.push(trade);
                             }
                         }
-                        Trade{ ref when, kind: Kind::Buy{ offered: ref lhs_offered, gained: ref lhs_gained } } if &lhs_gained.symbol == &rhs_offered.symbol => {
+                        Trade{ ref when, kind: Kind::Trade{ offered: ref lhs_offered, gained: ref lhs_gained } } if &lhs_gained.symbol == &rhs_offered.symbol => {
                             processed += 1;
 
                             if rhs_offered.amount == lhs_gained.amount {
@@ -228,7 +219,7 @@ impl Portfolio {
 
                                 processed_trades.push(Trade{
                                     when: when.clone(),
-                                    kind: Kind::Buy{
+                                    kind: Kind::Trade{
                                         offered: rhs_offered.clone(),
                                         gained: Amount{amount: proceeds.clone(), symbol: rhs_offered.symbol},
                                     }
@@ -240,7 +231,7 @@ impl Portfolio {
 
                                 processed_trades.push(Trade{
                                     when: when.clone(),
-                                    kind: Kind::Buy{
+                                    kind: Kind::Trade{
                                         offered: rhs_offered.clone(),
                                         gained: Amount{amount: difference.clone(), symbol: rhs_offered.symbol},
                                     }
@@ -253,9 +244,9 @@ impl Portfolio {
                     }
                 }
 
-                // if !realization_processed {
-                //     processed_liquidations.push(liquidation.clone());
-                // }
+                if !realization_processed {
+                    processed_liquidations.push(liquidation.clone());
+                }
 
                 trades = processed_trades;
             }
@@ -309,14 +300,14 @@ mod test {
 
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2017, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Buy{
+            kind: Kind::Trade{
                 offered: usd!(1000),
                 gained: btc!(1),
             }
         });
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Sell{
+            kind: Kind::Trade{
                 offered: btc!(1),
                 gained: usd!(2000),
             }
@@ -341,14 +332,14 @@ mod test {
 
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2017, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Buy{
+            kind: Kind::Trade{
                 offered: usd!(1000),
                 gained: btc!(1),
             }
         });
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Sell{
+            kind: Kind::Trade{
                 offered: btc!(1),
                 gained: usd!(500),
             }
@@ -373,14 +364,14 @@ mod test {
 
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2017, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Buy{
+            kind: Kind::Trade{
                 offered: usd!(1000),
                 gained: btc!(1),
             }
         });
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Sell{
+            kind: Kind::Trade{
                 offered: btc!(0.5),
                 gained: usd!(600),
             }
@@ -405,21 +396,21 @@ mod test {
 
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2017, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Buy{
+            kind: Kind::Trade{
                 offered: usd!(1000),
                 gained: btc!(1),
             }
         });
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Sell{
+            kind: Kind::Trade{
                 offered: btc!(0.5),
                 gained: usd!(600),
             }
         });
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Sell{
+            kind: Kind::Trade{
                 offered: btc!(0.25),
                 gained: usd!(700),
             }
@@ -452,21 +443,21 @@ mod test {
 
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2017, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Buy{
+            kind: Kind::Trade{
                 offered: usd!(1000),
                 gained: btc!(1),
             }
         });
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2018, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Buy{
+            kind: Kind::Trade{
                 offered: usd!(1000),
                 gained: btc!(1),
             }
         });
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Sell{
+            kind: Kind::Trade{
                 offered: btc!(2),
                 gained: usd!(4000),
             }
@@ -499,14 +490,14 @@ mod test {
 
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2017, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Buy{
+            kind: Kind::Trade{
                 offered: usd!(1000),
                 gained: btc!(1),
             }
         });
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Sell{
+            kind: Kind::Trade{
                 offered: btc!(2),
                 gained: usd!(4000),
             }
@@ -539,21 +530,21 @@ mod test {
 
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2017, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Buy{
+            kind: Kind::Trade{
                 offered: usd!(1000),
                 gained: btc!(1),
             }
         });
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2018, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Buy{
+            kind: Kind::Trade{
                 offered: btc!(1),
                 gained: usdt!(2000),
             }
         });
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Sell{
+            kind: Kind::Trade{
                 offered: usdt!(2000),
                 gained: usd!(2000),
             }
@@ -578,21 +569,21 @@ mod test {
 
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2017, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Buy{
+            kind: Kind::Trade{
                 offered: usd!(4000),
                 gained: btc!(1),
             }
         });
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2018, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Buy{
+            kind: Kind::Trade{
                 offered: btc!(1),
                 gained: usdt!(2000),
             }
         });
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Sell{
+            kind: Kind::Trade{
                 offered: usdt!(2000),
                 gained: usd!(2000),
             }
@@ -617,35 +608,35 @@ mod test {
 
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2016, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Buy{
+            kind: Kind::Trade{
                 offered: usd!(100),
                 gained: usdt!(25),
             }
         });
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2016, 1, 2).and_hms(0, 0, 0),
-            kind: Kind::Buy{
+            kind: Kind::Trade{
                 offered: usd!(100),
                 gained: usdt!(25),
             }
         });
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2017, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Buy{
+            kind: Kind::Trade{
                 offered: usd!(100),
                 gained: usdt!(25),
             }
         });
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2018, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Buy{
+            kind: Kind::Trade{
                 offered: usdt!(40),
                 gained: eth!(2),
             }
         });
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2019, 1, 1).and_hms(0, 0, 0),
-            kind: Kind::Buy{
+            kind: Kind::Trade{
                 offered: eth!(2),
                 gained: btc!(0.1),
             }
@@ -653,7 +644,7 @@ mod test {
 
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2020, 1, 2).and_hms(0, 0, 0),
-            kind: Kind::Sell{
+            kind: Kind::Trade{
                 offered: btc!(0.1),
                 gained: usd!(4000),
             }

@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use anyhow::Result;
 use bigdecimal::BigDecimal;
-use coinbase_rs::{Private, ASync, MAIN_URL};
+use coinbase_rs::{Private, MAIN_URL};
 use uuid::Uuid;
 use futures::stream::StreamExt;
 use tokio::runtime::Runtime;
@@ -18,7 +18,7 @@ pub fn transactions(key: &str, secret: &str) -> Result<Vec<Transaction>> {
 }
 
 async fn fetch_transactions(key: &str, secret: &str) -> Result<Vec<Transaction>> {
-    let client: Private<ASync> = Private::new(MAIN_URL, key, secret);
+    let client: Private = Private::new(MAIN_URL, key, secret);
 
     let mut transactions = Vec::new();
 

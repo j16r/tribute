@@ -22,13 +22,13 @@ async fn fetch_transactions(key: &str, secret: &str) -> Result<Vec<Transaction>>
 
     let mut transactions = Vec::new();
 
-    let accounts_stream = client.accounts_stream();
+    let accounts_stream = client.accounts();
     pin_mut!(accounts_stream);
 
     while let Some(accounts_result) = accounts_stream.next().await {
         for account in accounts_result? {
             if let Ok(ref id) = Uuid::from_str(&account.id) {
-                let transactions_stream = client.transactions_stream(id);
+                let transactions_stream = client.transactions(id);
                 pin_mut!(transactions_stream);
 
                 let code = account.currency.code;

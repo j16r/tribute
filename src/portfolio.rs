@@ -141,16 +141,32 @@ impl Portfolio {
                         let cost_basis = &matching.offered.amount;
                         let gain = &proceeds - cost_basis;
 
-                        let realization = Realization{
-                            description: description.clone(),
-                            acquired_when: Some(matching.when.clone()),
-                            disposed_when: trade.when.clone(),
-                            proceeds: proceeds.clone(),
-                            cost_basis: cost_basis.clone(),
-                            gain: gain.clone(),
-                        };
-                        dbg!(&realization);
-                        realizations.push(realization);
+                        if &matching.offered.symbol == denomination {
+                            let realization = Realization{
+                                description: description.clone(),
+                                acquired_when: Some(matching.when.clone()),
+                                disposed_when: trade.when.clone(),
+                                proceeds: proceeds.clone(),
+                                cost_basis: cost_basis.clone(),
+                                gain: gain.clone(),
+                            };
+                            dbg!(&realization);
+                            realizations.push(realization);
+
+                            *matching_sales = rest_matches.to_vec();
+                        } else {
+                            let sale = Sale{
+                                when: matching.when.clone(),
+                                original_symbol: matching.original_symbol.clone(),
+                                offered: Amount{amount: trade.offered.amount.clone(), symbol: matching.offered.symbol},
+                                gained: Amount{amount: proceeds.clone(), symbol: matching.gained.symbol},
+                            };
+                            dbg!(&sale);
+
+                            let mut new_matching_sales = Vec::from([sale]);
+                            new_matching_sales.append(&mut rest_matches.to_vec());
+                            *matching_sales = new_matching_sales;
+                        }
 
                         let remainder_gained = (&trade.gained.amount - &proceeds).clone();
                         let remainder_offered = (&trade.offered.amount - &trade.offered.amount * &divisor).clone();
@@ -169,8 +185,6 @@ impl Portfolio {
                             new_final_sales.append(&mut rest_trades.to_vec());
                             final_sales = new_final_sales;
                         }
-
-                        *matching_sales = rest_matches.to_vec();
                     }
                 } else {
                     let realization = Realization{

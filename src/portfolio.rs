@@ -589,6 +589,69 @@ mod test {
     }
 
     #[test]
+    fn test_portfolio_sell_multiple_early_buys() {
+        let mut portfolio = Portfolio::new();
+
+        portfolio.add_trade(&Trade{
+            when: Utc.ymd(2016, 1, 1).and_hms(0, 0, 0),
+            kind: Kind::Trade{
+                offered: usd!(1),
+                gained: btc!(10),
+            }
+        });
+        portfolio.add_trade(&Trade{
+            when: Utc.ymd(2016, 1, 2).and_hms(0, 0, 0),
+            kind: Kind::Trade{
+                offered: usd!(1),
+                gained: btc!(10),
+            }
+        });
+        portfolio.add_trade(&Trade{
+            when: Utc.ymd(2016, 1, 3).and_hms(0, 0, 0),
+            kind: Kind::Trade{
+                offered: usd!(1),
+                gained: btc!(10),
+            }
+        });
+
+
+        portfolio.add_trade(&Trade{
+            when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
+            kind: Kind::Trade{
+                offered: btc!(12),
+                gained: usd!(1),
+            }
+        });
+        portfolio.add_trade(&Trade{
+            when: Utc.ymd(2020, 1, 2).and_hms(0, 0, 0),
+            kind: Kind::Trade{
+                offered: btc!(5),
+                gained: usd!(1),
+            }
+        });
+
+        let realizations = portfolio.realizations(&USD);
+        assert_eq!(realizations, vec![
+            Realization {
+                description: "BTC sold via BTC-USD pair".into(),
+                acquired_when: Some(Utc.ymd(2016, 1, 1).and_hms(0, 0, 0)),
+                disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
+                proceeds: "100".parse().unwrap(),
+                cost_basis: "1".parse().unwrap(),
+                gain: "99".parse().unwrap(),
+            },
+            Realization {
+                description: "BTC sold via BTC-USD pair".into(),
+                acquired_when: Some(Utc.ymd(2016, 1, 1).and_hms(0, 0, 0)),
+                disposed_when: Utc.ymd(2020, 1, 2).and_hms(0, 0, 0),
+                proceeds: "100".parse().unwrap(),
+                cost_basis: "0.99".parse().unwrap(),
+                gain: "99".parse().unwrap(),
+            }
+        ]);
+    }
+
+    #[test]
     fn test_portfolio_sell() {
         let mut portfolio = Portfolio::new();
 

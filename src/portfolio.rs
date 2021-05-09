@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fmt;
 
 use bigdecimal::{BigDecimal, Zero};
@@ -81,7 +81,7 @@ impl Portfolio {
 
         let mut realizations: Vec<Realization> = Vec::new();
 
-        while let Some((trade, rest_trades)) = final_sales.split_first_mut() {
+        while let Some(trade) = final_sales.pop_front() {
             if let Some(matching_sales) = trades_by_gained.get_mut(&trade.offered.symbol) {
                 eprintln!("\nStarting new trade match");
                 dbg!(&trade);
@@ -94,8 +94,8 @@ impl Portfolio {
                         denomination.symbol()
                     );
 
-                if let Some((matching, rest_matches)) = matching_sales.split_first_mut() {
-                    dbg!(&matching, &rest_matches);
+                if let Some(matching) = matching_sales.pop_front() {
+                    dbg!(&matching);
 
                     if trade.offered.amount < matching.gained.amount {
                         dbg!(&matching);
@@ -129,11 +129,7 @@ impl Portfolio {
                         };
                         dbg!(&sale);
 
-                        let mut new_matching_sales = Vec::from([sale]);
-                        new_matching_sales.append(&mut rest_matches.to_vec());
-                        *matching_sales = new_matching_sales;
-
-                        final_sales = rest_trades.to_vec();
+                        matching_sales.push_front(sale);
 
                     } else {
                         let divisor = &matching.gained.amount / &trade.offered.amount;
@@ -152,8 +148,6 @@ impl Portfolio {
                             };
                             dbg!(&realization);
                             realizations.push(realization);
-
-                            *matching_sales = rest_matches.to_vec();
                         } else {
                             let sale = Sale{
                                 when: matching.when.clone(),
@@ -163,17 +157,13 @@ impl Portfolio {
                             };
                             dbg!(&sale);
 
-                            let mut new_matching_sales = Vec::from([sale]);
-                            new_matching_sales.append(&mut rest_matches.to_vec());
-                            *matching_sales = new_matching_sales;
+                            matching_sales.push_front(sale);
                         }
 
                         let remainder_gained = (&trade.gained.amount - &proceeds).clone();
                         let remainder_offered = (&trade.offered.amount - &trade.offered.amount * &divisor).clone();
 
-                        if remainder_gained.is_zero() {
-                            final_sales = rest_trades.to_vec();
-                        } else {
+                        if !remainder_gained.is_zero() {
                             let sale = Sale{
                                 when: trade.when.clone(),
                                 original_symbol: trade.original_symbol.clone(),
@@ -181,9 +171,8 @@ impl Portfolio {
                                 gained: Amount{amount: remainder_gained, symbol: trade.gained.symbol},
                             };
                             dbg!(&sale);
-                            let mut new_final_sales = Vec::from([sale]);
-                            new_final_sales.append(&mut rest_trades.to_vec());
-                            final_sales = new_final_sales;
+
+                            final_sales.push_front(sale);
                         }
                     }
                 } else {
@@ -404,9 +393,9 @@ impl Portfolio {
 
 
 fn organize_trades(trades: &Vec<Trade>, denomination: &Symbol) ->
-    (HashMap<Symbol, Vec<Sale>>, Vec<Sale>) {
-    let mut trades_by_gained : HashMap<Symbol, Vec<Sale>> = HashMap::new();
-    let mut final_sales : Vec<Sale> = Vec::new();
+    (HashMap<Symbol, VecDeque<Sale>>, VecDeque<Sale>) {
+    let mut trades_by_gained : HashMap<Symbol, VecDeque<Sale>> = HashMap::new();
+    let mut final_sales : VecDeque<Sale> = VecDeque::new();
 
     // Organize all trades by what was obtained
     for trade in trades.iter() {
@@ -418,12 +407,12 @@ fn organize_trades(trades: &Vec<Trade>, denomination: &Symbol) ->
             gained: gained.clone(),
         };
         if &gained.symbol == denomination {
-            final_sales.push(sale);
+            final_sales.push_back(sale);
         } else {
             trades_by_gained
                 .entry(gained.symbol)
-                .or_insert_with(|| Vec::new())
-                .push(sale);
+                .or_insert_with(|| VecDeque::new())
+                .push_back(sale);
         }
     }
 
@@ -472,12 +461,12 @@ mod test {
         let (rest, to_usd) = organize_trades(&trades, &USD);
 
         assert_eq!(rest.len(), 1);
-        assert_eq!(rest.get(&BTC), Some(&vec![Sale{
+        assert_eq!(rest.get(&BTC), Some(&VecDeque::from(vec![Sale{
             when: Utc.ymd(2020, 1, 3).and_hms(0, 0, 0),
             original_symbol: USD,
             offered: usd!(300),
             gained: btc!(1),
-        }]));
+        }])));
         assert_eq!(to_usd[0], Sale{
             when: Utc.ymd(2020, 1, 2).and_hms(0, 0, 0),
             original_symbol: BTC,

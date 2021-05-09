@@ -235,13 +235,14 @@ impl fmt::Debug for Portfolio {
 
 #[cfg(test)]
 mod test {
-    use chrono::offset::TimeZone;
-    use chrono::Utc;
-
     use bigdecimal::FromPrimitive;
+    use chrono::Utc;
+    use chrono::offset::TimeZone;
+    use pretty_assertions::{assert_eq, assert_ne};
 
     use crate::symbol::{Symbol, Fiat, Crypto, USD, BTC};
     use crate::{usd, usdt, eth, btc};
+
 
     use super::*;
 
@@ -596,21 +597,21 @@ mod test {
             when: Utc.ymd(2016, 1, 1).and_hms(0, 0, 0),
             kind: Kind::Trade{
                 offered: usd!(1),
-                gained: btc!(10),
+                gained: usdt!(1),
             }
         });
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2016, 1, 2).and_hms(0, 0, 0),
             kind: Kind::Trade{
                 offered: usd!(1),
-                gained: btc!(10),
+                gained: usdt!(1),
             }
         });
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2016, 1, 3).and_hms(0, 0, 0),
             kind: Kind::Trade{
                 offered: usd!(1),
-                gained: btc!(10),
+                gained: usdt!(1),
             }
         });
 
@@ -618,14 +619,14 @@ mod test {
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
             kind: Kind::Trade{
-                offered: btc!(12),
-                gained: usd!(1),
+                offered: usdt!(2),
+                gained: usd!(2),
             }
         });
         portfolio.add_trade(&Trade{
             when: Utc.ymd(2020, 1, 2).and_hms(0, 0, 0),
             kind: Kind::Trade{
-                offered: btc!(5),
+                offered: usdt!(1),
                 gained: usd!(1),
             }
         });
@@ -633,20 +634,28 @@ mod test {
         let realizations = portfolio.realizations(&USD);
         assert_eq!(realizations, vec![
             Realization {
-                description: "BTC sold via BTC-USD pair".into(),
+                description: "USDT sold via USDT-USD pair".into(),
                 acquired_when: Some(Utc.ymd(2016, 1, 1).and_hms(0, 0, 0)),
                 disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
-                proceeds: "100".parse().unwrap(),
-                cost_basis: "1".parse().unwrap(),
-                gain: "99".parse().unwrap(),
+                proceeds: "1.".parse().unwrap(),
+                cost_basis: "1.".parse().unwrap(),
+                gain: "0.0".parse().unwrap(),
             },
             Realization {
-                description: "BTC sold via BTC-USD pair".into(),
-                acquired_when: Some(Utc.ymd(2016, 1, 1).and_hms(0, 0, 0)),
+                description: "USDT sold via USDT-USD pair".into(),
+                acquired_when: Some(Utc.ymd(2016, 1, 2).and_hms(0, 0, 0)),
+                disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
+                proceeds: "1.".parse().unwrap(),
+                cost_basis: "1.".parse().unwrap(),
+                gain: "0.0".parse().unwrap(),
+            },
+            Realization {
+                description: "USDT sold via USDT-USD pair".into(),
+                acquired_when: Some(Utc.ymd(2016, 1, 3).and_hms(0, 0, 0)),
                 disposed_when: Utc.ymd(2020, 1, 2).and_hms(0, 0, 0),
-                proceeds: "100".parse().unwrap(),
-                cost_basis: "0.99".parse().unwrap(),
-                gain: "99".parse().unwrap(),
+                proceeds: "1.".parse().unwrap(),
+                cost_basis: "1.".parse().unwrap(),
+                gain: "0.0".parse().unwrap(),
             }
         ]);
     }

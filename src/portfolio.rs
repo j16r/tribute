@@ -118,16 +118,28 @@ impl Portfolio {
                         let cost_basis = (&matching.offered.amount * &divisor).clone();
                         let gain = &proceeds - &cost_basis;
 
-                        let realization = Realization{
-                            description: description.clone(),
-                            acquired_when: Some(matching.when.clone()),
-                            disposed_when: trade.when.clone(),
-                            proceeds: proceeds.clone(),
-                            cost_basis: cost_basis.clone(),
-                            gain: gain.clone(),
-                        };
-                        dbg!(&realization);
-                        realizations.push(realization);
+                        if &matching.offered.symbol == denomination {
+                            let realization = Realization{
+                                description: description.clone(),
+                                acquired_when: Some(matching.when.clone()),
+                                disposed_when: trade.when.clone(),
+                                proceeds: proceeds.clone(),
+                                cost_basis: cost_basis.clone(),
+                                gain: gain.clone(),
+                            };
+                            dbg!(&realization);
+                            realizations.push(realization);
+                        } else {
+                            let sale = Sale{
+                                when: trade.when.clone(),
+                                original_symbol: trade.original_symbol.clone(),
+                                offered: Amount{amount: matching.offered.amount.clone(), symbol: matching.offered.symbol},
+                                gained: Amount{amount: proceeds.clone(), symbol: matching.gained.symbol},
+                            };
+                            dbg!(&sale);
+
+                            final_sales.push_front(sale);
+                        }
 
                         // Only part of the matching trade was accounted for, add a new trade in
                         // with the remainder
@@ -585,6 +597,45 @@ mod test {
                 proceeds: BigDecimal::from_f32(2000.).unwrap(),
                 cost_basis: BigDecimal::from_f32(4000.).unwrap(),
                 gain: BigDecimal::from_f32(-2000.).unwrap(),
+            },
+        ]);
+    }
+
+    #[test]
+    fn test_portfolio_sell_with_exchange_and_small_trade() {
+        let mut portfolio = Portfolio::new();
+
+        portfolio.add_trade(&Trade{
+            when: Utc.ymd(2017, 1, 1).and_hms(0, 0, 0),
+            kind: Kind::Trade{
+                offered: usd!(1000),
+                gained: btc!(2),
+            }
+        });
+        portfolio.add_trade(&Trade{
+            when: Utc.ymd(2018, 1, 1).and_hms(0, 0, 0),
+            kind: Kind::Trade{
+                offered: btc!(1),
+                gained: usdt!(2000),
+            }
+        });
+        portfolio.add_trade(&Trade{
+            when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
+            kind: Kind::Trade{
+                offered: usdt!(1000),
+                gained: usd!(2000),
+            }
+        });
+
+        let realizations = portfolio.realizations(&USD);
+        assert_eq!(realizations, vec![
+            Realization{
+                description: "USDT sold via USDT-USD pair".into(),
+                acquired_when: Some(Utc.ymd(2017, 1, 1).and_hms(0, 0, 0)),
+                disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
+                proceeds: BigDecimal::from_f32(2000.).unwrap(),
+                cost_basis: BigDecimal::from_f32(500.).unwrap(),
+                gain: BigDecimal::from_f32(1500.).unwrap(),
             },
         ]);
     }

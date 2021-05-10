@@ -138,7 +138,6 @@ async fn fetch_transactions(
 
         while let Some(account_hist_result) = account_hist_stream.next().await {
             for trade in account_hist_result? {
-                dbg!(&trade);
                 if let AccountHistoryDetails::Match { product_id, trade_id, .. } = trade.details {
                     let time_of_trade = trade.created_at;
 

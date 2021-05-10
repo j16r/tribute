@@ -2693,7 +2693,6 @@ dependencies = [
  "lazy_static",
  "memchr 2.4.0",
  "mio 0.6.23",
- "num_cpus",
  "pin-project-lite 0.1.12",
  "slab 0.4.3",
 ]

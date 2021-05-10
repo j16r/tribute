@@ -5,19 +5,13 @@ use bigdecimal::BigDecimal;
 use coinbase_rs::{Private, MAIN_URL};
 use uuid::Uuid;
 use futures::stream::StreamExt;
-use tokio::runtime::Runtime;
 use futures::pin_mut;
 
 use crate::types::Transaction;
 
 const PROVIDER: &str = "coinbase";
 
-pub fn transactions(key: &str, secret: &str) -> Result<Vec<Transaction>> {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(fetch_transactions(key, secret))
-}
-
-async fn fetch_transactions(key: &str, secret: &str) -> Result<Vec<Transaction>> {
+pub async fn transactions(key: &str, secret: &str) -> Result<Vec<Transaction>> {
     let client: Private = Private::new(MAIN_URL, key, secret);
 
     let mut transactions = Vec::new();

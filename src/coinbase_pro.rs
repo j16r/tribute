@@ -8,7 +8,6 @@ use coinbase_pro_rs::structs::public::*;
 use coinbase_pro_rs::{CBError, Private, ASync, MAIN_URL};
 use futures::pin_mut;
 use futures::stream::{Stream, StreamExt};
-use tokio::runtime::Runtime;
 use uuid::Uuid;
 
 use crate::symbol::Symbol;
@@ -107,17 +106,7 @@ impl ThrottledClient {
 
 }
 
-pub fn transactions(
-    key: &str,
-    secret: &str,
-    passphrase: &str,
-    denomination: Symbol,
-) -> Result<Vec<Transaction>, Box<dyn Error>> {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(fetch_transactions(key, secret, passphrase, denomination))
-}
-
-async fn fetch_transactions(
+pub async fn transactions(
     key: &str,
     secret: &str,
     passphrase: &str,

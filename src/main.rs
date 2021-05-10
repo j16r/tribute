@@ -33,7 +33,8 @@ use clap::{App, SubCommand};
 
 use config::{load_config, ConfigError};
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let config = load_config(None).unwrap_or_else(|error| {
         match error {
             ConfigError::TomlError(e) => {
@@ -58,7 +59,7 @@ fn main() {
         .get_matches();
 
     if let Some(_) = matches.subcommand_matches("export") {
-        if let Err(err) = export::export(&config) {
+        if let Err(err) = export::export(&config).await {
             eprintln!("Error while exporting: {}", err);
             process::exit(1);
         }

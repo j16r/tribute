@@ -8,14 +8,14 @@ use chrono::prelude::*;
 
 const PROVIDER: &str = "etherscan";
 
-pub fn transactions(
+pub async fn transactions(
     key: &str,
     accounts: &Vec<web3::types::H160>,
 ) -> Result<Vec<Transaction>, Box<dyn Error>> {
     let mut transactions = Vec::new();
 
     for account in accounts.iter() {
-        let txes = txlist(&key, &account)?;
+        let txes = txlist(&key, &account).await?;
 
         for tx in txes.iter() {
             let timestamp = NaiveDateTime::parse_from_str(&tx.time_stamp, "%s")?;
@@ -40,7 +40,7 @@ pub fn transactions(
     Ok(transactions)
 }
 
-fn txlist(api_key: &str, account: &web3::types::H160) -> Result<Vec<Tx>, Box<dyn Error>> {
+async fn txlist(api_key: &str, account: &web3::types::H160) -> Result<Vec<Tx>, Box<dyn Error>> {
     let query = vec![
         "module=account",
         "action=tokentx",
@@ -52,7 +52,7 @@ fn txlist(api_key: &str, account: &web3::types::H160) -> Result<Vec<Tx>, Box<dyn
     ].join("&");
     let url = format!("https://api.etherscan.io/api?{}", query);
 
-    let response = reqwest::blocking::get(&url)?.json::<Response>()?;
+    let response = reqwest::get(&url).await?.json::<Response>().await?;
     Ok(response.result)
 }
 

@@ -78,6 +78,7 @@ impl Portfolio {
 
     pub fn realizations(&self, denomination: &Symbol) -> Vec<Realization> {
         let (mut trades_by_gained, mut final_sales) = organize_trades(&self.trades, denomination);
+        dbg!(&trades_by_gained, &final_sales);
 
         let mut realizations: Vec<Realization> = Vec::new();
 
@@ -88,6 +89,8 @@ impl Portfolio {
                     denomination.symbol(),
                     original = trade.original_symbol.symbol(),
                 );
+
+            dbg!(&trade);
 
             if let Some(matching_sales) = trades_by_gained.get_mut(&trade.offered.symbol) {
                 eprintln!("\nStarting new trade match");

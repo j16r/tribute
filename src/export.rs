@@ -19,7 +19,7 @@ struct Record {
     provider: String,
 }
 
-pub fn export(config: &Config) -> Result<(), Box<dyn Error>> {
+pub async fn export(config: &Config) -> Result<(), Box<dyn Error>> {
     let mut exchange_transactions: Vec<Vec<Transaction>> = Vec::new();
 
     // Add the manual transactions
@@ -32,23 +32,27 @@ pub fn export(config: &Config) -> Result<(), Box<dyn Error>> {
                 ref key,
                 ref secret,
                 ref passphrase,
-            } => coinbase_pro::transactions(key, secret, passphrase, config.denomination())?,
+            } => coinbase_pro::transactions(key, secret, passphrase, config.denomination()).await?,
             Exchange::Coinbase {
                 ref key,
                 ref secret,
-            } => coinbase::transactions(key, secret)?,
+            } => coinbase::transactions(key, secret).await?,
             Exchange::Ethereum { ref url } => {
-                match config.accounts {
-                    Some(ref a) => ethereum::transactions(url, a)?,
-                    _=> panic!("nope")
+                if let Some(ref a) = config.accounts {
+                    ethereum::transactions(url, a)?
+                } else {
+                    eprintln!("Specified ethereum configuration with no accounts");
+                    vec![]
                 }
             },
             Exchange::Etherscan {
                 ref key,
             } => {
-                match config.accounts {
-                    Some(ref a) => etherscan::transactions(key, a)?,
-                    _=> panic!("nope")
+                if let Some(ref a) = config.accounts {
+                    etherscan::transactions(key, a).await?
+                } else {
+                    eprintln!("Specified etherscan configuration with no accounts");
+                    vec![]
                 }
             },
         });

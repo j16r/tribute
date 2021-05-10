@@ -37,6 +37,11 @@ async fn fetch_transactions(key: &str, secret: &str) -> Result<Vec<Transaction>>
                         if trade.r#type != "buy" && trade.r#type != "sell" {
                             continue
                         }
+
+                        if code == trade.native_amount.currency {
+                            continue
+                        }
+
                         let usd_amount = trade.native_amount.amount;
                         let trade_amount = trade.amount.amount;
                         let usd_rate = &usd_amount / &trade_amount;

@@ -204,6 +204,17 @@ impl Portfolio {
                         }
                     }
                 }
+            } else {
+                let realization = Realization{
+                    description: description.clone(),
+                    acquired_when: None,
+                    disposed_when: trade.when.clone(),
+                    proceeds: trade.gained.amount.clone(),
+                    cost_basis: BigDecimal::zero(),
+                    gain: trade.gained.amount.clone(),
+                };
+                dbg!(&realization);
+                realizations.push(realization);
             }
         }
 
@@ -693,7 +704,7 @@ mod test {
                 disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
                 proceeds: "1.".parse().unwrap(),
                 cost_basis: "1.".parse().unwrap(),
-                gain: "0.0".parse().unwrap(),
+                gain: "0.".parse().unwrap(),
             },
             Realization {
                 description: "USDT sold via USDT-USD pair".into(),
@@ -701,7 +712,7 @@ mod test {
                 disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
                 proceeds: "1.".parse().unwrap(),
                 cost_basis: "1.".parse().unwrap(),
-                gain: "0.0".parse().unwrap(),
+                gain: "0.".parse().unwrap(),
             },
             Realization {
                 description: "USDT sold via USDT-USD pair".into(),
@@ -709,8 +720,33 @@ mod test {
                 disposed_when: Utc.ymd(2020, 1, 2).and_hms(0, 0, 0),
                 proceeds: "1.".parse().unwrap(),
                 cost_basis: "1.".parse().unwrap(),
-                gain: "0.0".parse().unwrap(),
+                gain: "0.".parse().unwrap(),
             }
+        ]);
+    }
+
+    #[test]
+    fn test_lone_sale() {
+        let mut portfolio = Portfolio::new();
+
+        portfolio.add_trade(&Trade{
+            when: Utc.ymd(2016, 1, 1).and_hms(0, 0, 0),
+            kind: Kind::Trade{
+                offered: btc!(0.2),
+                gained: usd!(3900),
+            }
+        });
+
+        let realizations = portfolio.realizations(&USD);
+        assert_eq!(realizations, vec![
+            Realization {
+                description: "BTC sold via BTC-USD pair".into(),
+                acquired_when: None,
+                disposed_when: Utc.ymd(2016, 1, 1).and_hms(0, 0, 0),
+                proceeds: "3900.".parse().unwrap(),
+                cost_basis: "0.".parse().unwrap(),
+                gain: "3900.".parse().unwrap(),
+            },
         ]);
     }
 

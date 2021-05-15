@@ -1,7 +1,10 @@
 use std::cmp::Ordering;
 
 use bigdecimal::{BigDecimal, ParseBigDecimalError, Zero, FromPrimitive};
+use chrono::ParseError;
 use regex::Regex;
+use serde::de::{self, Deserializer};
+use serde::Deserialize;
 
 pub type DateTime = chrono::DateTime<chrono::Utc>;
 
@@ -60,6 +63,20 @@ pub fn format_amount(amount: &BigDecimal) -> String {
     }
 }
 
+pub fn deserialize_amount<'de, D: Deserializer<'de>>(deserializer: D) -> Result<BigDecimal, D::Error> {
+    let input = String::deserialize(deserializer)?;
+    parse_amount(&input).map_err(|e| {
+        de::Error::invalid_value(de::Unexpected::Str(&input), &"")
+    })
+}
+
+pub fn deserialize_date<'de, D: Deserializer<'de>>(deserializer: D) -> Result<DateTime, D::Error> {
+    let input = String::deserialize(deserializer)?;
+    parse_date(&input).map_err(|e| {
+        de::Error::invalid_value(de::Unexpected::Str(&input), &"")
+    })
+}
+
 pub fn parse_amount(input: &str) -> Result<BigDecimal, ParseBigDecimalError> {
     let re = Regex::new(r"\A\((.*)\)\z").unwrap();
     if let Some(matches) = re.captures(input) {
@@ -68,6 +85,10 @@ pub fn parse_amount(input: &str) -> Result<BigDecimal, ParseBigDecimalError> {
         return Ok(result * BigDecimal::from_i32(-1).unwrap());
     }
     input.trim_start_matches('$').parse::<BigDecimal>()
+}
+
+pub fn parse_date(input: &str) -> Result<DateTime, ParseError> {
+    Ok(chrono::DateTime::parse_from_rfc3339(input)?.with_timezone(&chrono::Utc))
 }
 
 #[test]

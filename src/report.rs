@@ -1,25 +1,34 @@
-use std::error::Error;
 use std::io;
 
 use bigdecimal::{BigDecimal, Zero};
 use chrono::{self, Datelike};
+use anyhow::Result;
 
 use crate::amount::Amount;
 use crate::portfolio::{Portfolio, Trade, Kind};
 use crate::symbol::Symbol;
 use crate::types::DateTime;
-use crate::types::{format_usd_amount, parse_amount};
+use crate::types::{format_usd_amount, deserialize_amount, deserialize_date};
 
 #[derive(Debug, Deserialize)]
 struct Record {
+    #[serde(alias = "ID")]
     id: String,
+    #[serde(alias = "Market")]
     market: String,
+    #[serde(alias = "Token")]
     token: String,
-    amount: String,
-    rate: String,
-    usd_rate: String,
-    usd_amount: String,
-    created_at: String,
+    #[serde(alias = "Amount", deserialize_with = "deserialize_amount")]
+    amount: BigDecimal,
+    #[serde(alias = "Rate")]
+    rate: BigDecimal,
+    #[serde(alias = "USD Rate", deserialize_with = "deserialize_amount")]
+    usd_rate: BigDecimal,
+    #[serde(alias = "USD Amount", deserialize_with = "deserialize_amount")]
+    usd_amount: BigDecimal,
+    #[serde(alias = "Created At", deserialize_with = "deserialize_date")]
+    created_at: DateTime,
+    #[serde(alias = "Provider")]
     provider: String,
 }
 
@@ -33,58 +42,42 @@ pub struct Realization {
     pub gain: BigDecimal,
 }
 
-pub fn report(year: u16, denomination: &Symbol) -> Result<(), Box<dyn Error>> {
+pub fn report(year: u16, denomination: &Symbol) -> Result<()> {
     let mut portfolio = Portfolio::new();
 
     let mut rdr = csv::Reader::from_reader(io::stdin());
 
-    // Load everything into memory
-    let mut line_items = rdr
-        .records()
-        .map(|r| r.unwrap())
-        .collect::<Vec<csv::StringRecord>>();
+    for result in rdr.deserialize() {
+        let record: Record = result?;
 
-    // Sort by date earliest to latest
-    line_items.sort_by(|a, b| a.get(7).unwrap().partial_cmp(b.get(7).unwrap()).unwrap());
-
-    for line_item in line_items {
-        let market = line_item.get(1).unwrap();
-
-        let amount = parse_amount(line_item.get(3).unwrap()).unwrap();
-        let date_of_sale = chrono::DateTime::parse_from_rfc3339(line_item.get(7).unwrap())
-            .unwrap()
-            .with_timezone(&chrono::Utc);
-
-        let rate = parse_amount(line_item.get(4).unwrap()).unwrap();
-
-        let market_components = market.split("-").collect::<Vec<_>>();
+        let market_components = record.market.split("-").collect::<Vec<_>>();
         let from_symbol : Symbol = market_components[0].parse().unwrap();
         let to_symbol : Symbol = market_components[1].parse().unwrap();
 
-        let trade = if amount >= BigDecimal::zero() {
+        let trade = if record.amount >= BigDecimal::zero() {
             Trade{
-                when: date_of_sale,
+                when: record.created_at,
                 kind: Kind::Trade{
                     offered: Amount{
-                        amount: &rate * &amount.abs(),
+                        amount: &record.rate * &record.amount.abs(),
                         symbol: to_symbol,
                     },
                     gained: Amount{
-                        amount: amount.abs().clone(),
+                        amount: record.amount.abs().clone(),
                         symbol: from_symbol,
                     },
                 }
             }
         } else {
             Trade{
-                when: date_of_sale,
+                when: record.created_at,
                 kind: Kind::Trade{
                     offered: Amount{
-                        amount: amount.abs().clone(),
+                        amount: record.amount.abs().clone(),
                         symbol: from_symbol,
                     },
                     gained: Amount{
-                        amount: &rate * &amount.abs(),
+                        amount: &record.rate * &record.amount.abs(),
                         symbol: to_symbol,
                     },
                 }

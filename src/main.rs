@@ -54,7 +54,8 @@ async fn main() {
         .about("Generate tax records from various crypto exchanges")
         .subcommand(SubCommand::with_name("export").about("Exports your exchange order history"))
         .subcommand(
-            SubCommand::with_name("report").about("Create a report from your order history"),
+            SubCommand::with_name("report")
+                .about("Create a report from your order history"),
         )
         .get_matches();
 
@@ -64,7 +65,7 @@ async fn main() {
             process::exit(1);
         }
     } else if let Some(_) = matches.subcommand_matches("report") {
-        if let Err(err) = report::report(config.tax_year, &config.denomination()) {
+        if let Err(err) = report::report(config.tax_year, &config.denomination(), &config.report_format) {
             eprintln!("Error while generating report: {}", err);
             process::exit(1);
         }

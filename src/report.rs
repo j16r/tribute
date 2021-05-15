@@ -44,12 +44,13 @@ pub struct Realization {
     pub gain: BigDecimal,
 }
 
+#[derive(Debug, Deserialize, Eq, PartialEq)]
 pub enum Format {
     IRS1099B,
     TurboTax,
 }
 
-pub fn report(year: u16, denomination: &Symbol) -> Result<()> {
+pub fn report(year: u16, denomination: &Symbol, format: &Option<Format>) -> Result<()> {
     let mut portfolio = Portfolio::new();
 
     let mut rdr = csv::Reader::from_reader(io::stdin());
@@ -95,8 +96,7 @@ pub fn report(year: u16, denomination: &Symbol) -> Result<()> {
 
     let mut writer = csv::Writer::from_writer(io::stdout());
 
-    let format = Format::TurboTax;
-    match format {
+    match format.as_ref().unwrap_or(&Format::IRS1099B) {
         Format::IRS1099B => {
             writer.write_record(&[
                 "Description of property",

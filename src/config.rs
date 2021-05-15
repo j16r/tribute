@@ -8,6 +8,7 @@ use bigdecimal::BigDecimal;
 
 use crate::symbol::{Symbol, USD};
 use crate::types::{self, DateTime};
+use crate::report::Format;
 
 #[derive(Clone, Deserialize, Debug, PartialEq)]
 pub struct Transaction {
@@ -57,6 +58,7 @@ pub struct Config {
     pub tax_year: u16,
     pub accounts: Option<Vec<web3::types::H160>>,
     pub denomination: Option<String>,
+    pub report_format: Option<Format>,
 }
 
 const PROVIDER: &str = "manual";
@@ -219,6 +221,7 @@ mod test {
                     web3::types::H160::from_str("ffffffffffffffffffffffffffffffffffffffff").unwrap(),
                 ]),
                 denomination: None,
+                report_format: None,
             }
         );
         assert_eq!(config.denomination(), USD);

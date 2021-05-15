@@ -65,14 +65,14 @@ pub fn format_amount(amount: &BigDecimal) -> String {
 
 pub fn deserialize_amount<'de, D: Deserializer<'de>>(deserializer: D) -> Result<BigDecimal, D::Error> {
     let input = String::deserialize(deserializer)?;
-    parse_amount(&input).map_err(|e| {
+    parse_amount(&input).map_err(|_e| {
         de::Error::invalid_value(de::Unexpected::Str(&input), &"")
     })
 }
 
 pub fn deserialize_date<'de, D: Deserializer<'de>>(deserializer: D) -> Result<DateTime, D::Error> {
     let input = String::deserialize(deserializer)?;
-    parse_date(&input).map_err(|e| {
+    parse_date(&input).map_err(|_e| {
         de::Error::invalid_value(de::Unexpected::Str(&input), &"")
     })
 }

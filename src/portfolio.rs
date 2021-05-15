@@ -39,7 +39,7 @@ pub struct Trade {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Sale {
     when: DateTime,
-    original_symbol: Symbol,
+    original_offered: Amount,
     offered: Amount,
     gained: Amount,
 }
@@ -69,7 +69,7 @@ impl Portfolio {
             .add_lot(&gained.amount, &gained.amount, date);
     }
 
-    fn sell(&mut self, _date: DateTime, offered: &Amount, gained: &Amount) {
+    fn sell(&mut self, _date: DateTime, _offered: &Amount, gained: &Amount) {
         self.wallets
             .entry(gained.symbol)
             .or_insert_with(|| Wallet::new(&gained.symbol))
@@ -78,8 +78,6 @@ impl Portfolio {
 
     pub fn realizations(&self, denomination: &Symbol) -> Vec<Realization> {
         let (mut trades_by_gained, mut final_sales) = organize_trades(&self.trades, denomination);
-        dbg!(&trades_by_gained, &final_sales);
-
         let mut realizations: Vec<Realization> = Vec::new();
 
         while let Some(trade) = final_sales.pop_front() {
@@ -87,7 +85,7 @@ impl Portfolio {
                 format!(
                     "{original} sold via {original}-{} pair",
                     denomination.symbol(),
-                    original = trade.original_symbol.symbol(),
+                    original = trade.original_offered.symbol.symbol(),
                 );
 
             eprintln!("\nStarting new trade match");
@@ -96,7 +94,9 @@ impl Portfolio {
             if let Some(matching_sales) = trades_by_gained.get_mut(&trade.offered.symbol) {
                 if matching_sales.is_empty() {
                     let realization = Realization{
+                        amount: trade.offered.amount.clone(),
                         description: description.clone(),
+                        symbol: trade.original_offered.symbol,
                         acquired_when: None,
                         disposed_when: trade.when.clone(),
                         proceeds: trade.gained.amount.clone(),
@@ -105,14 +105,12 @@ impl Portfolio {
                     };
                     dbg!(&realization);
                     realizations.push(realization);
-                    // trades_by_gained.remove(&trade.offered.symbol);
                 }
 
                 if let Some(matching) = matching_sales.pop_front() {
                     dbg!(&matching);
 
-                    if trade.offered.amount < matching.gained.amount {
-                        dbg!(&matching);
+                    if matching.gained.amount > trade.offered.amount {
 
                         let divisor = &trade.offered.amount / &matching.gained.amount;
                         let proceeds = trade.gained.amount.clone();
@@ -121,7 +119,9 @@ impl Portfolio {
 
                         if &matching.offered.symbol == denomination {
                             let realization = Realization{
+                                amount: trade.original_offered.amount.clone(),
                                 description: description.clone(),
+                                symbol: trade.original_offered.symbol,
                                 acquired_when: Some(matching.when.clone()),
                                 disposed_when: trade.when.clone(),
                                 proceeds: proceeds.clone(),
@@ -133,7 +133,7 @@ impl Portfolio {
                         } else {
                             let sale = Sale{
                                 when: trade.when.clone(),
-                                original_symbol: trade.original_symbol.clone(),
+                                original_offered: trade.original_offered.clone(),
                                 offered: Amount{amount: matching.offered.amount.clone(), symbol: matching.offered.symbol},
                                 gained: Amount{amount: proceeds.clone(), symbol: matching.gained.symbol},
                             };
@@ -149,7 +149,7 @@ impl Portfolio {
 
                         let sale = Sale{
                             when: matching.when.clone(),
-                            original_symbol: matching.original_symbol.clone(),
+                            original_offered: Amount{amount: (&matching.original_offered.amount * &divisor).clone(), symbol: trade.original_offered.symbol.clone()},
                             offered: Amount{amount: remainder_offered, symbol: matching.offered.symbol},
                             gained: Amount{amount: remainder_gained, symbol: matching.gained.symbol},
                         };
@@ -165,7 +165,9 @@ impl Portfolio {
 
                         if &matching.offered.symbol == denomination {
                             let realization = Realization{
+                                amount: (&trade.original_offered.amount * &divisor).clone(),
                                 description: description.clone(),
+                                symbol: trade.original_offered.symbol,
                                 acquired_when: Some(matching.when.clone()),
                                 disposed_when: trade.when.clone(),
                                 proceeds: proceeds.clone(),
@@ -177,7 +179,7 @@ impl Portfolio {
                         } else {
                             let sale = Sale{
                                 when: trade.when.clone(),
-                                original_symbol: trade.original_symbol.clone(),
+                                original_offered: Amount{amount: (&trade.original_offered.amount * &divisor).clone(), symbol: trade.original_offered.symbol.clone()},
                                 offered: Amount{amount: matching.offered.amount.clone(), symbol: matching.offered.symbol},
                                 gained: Amount{amount: proceeds.clone(), symbol: matching.gained.symbol},
                             };
@@ -192,7 +194,7 @@ impl Portfolio {
                         if !remainder_gained.is_zero() {
                             let sale = Sale{
                                 when: trade.when.clone(),
-                                original_symbol: trade.original_symbol.clone(),
+                                original_offered: Amount{amount: (&trade.original_offered.amount * &divisor).clone(), symbol: trade.original_offered.symbol.clone()},
                                 offered: Amount{amount: remainder_offered, symbol: trade.offered.symbol},
                                 gained: Amount{amount: remainder_gained, symbol: trade.gained.symbol},
                             };
@@ -204,7 +206,9 @@ impl Portfolio {
                 }
             } else {
                 let realization = Realization{
+                    amount: trade.offered.amount,
                     description: description.clone(),
+                    symbol: trade.original_offered.symbol,
                     acquired_when: None,
                     disposed_when: trade.when.clone(),
                     proceeds: trade.gained.amount.clone(),
@@ -222,7 +226,7 @@ impl Portfolio {
 
 
 fn organize_trades(trades: &Vec<Trade>, denomination: &Symbol) ->
-    (HashMap<Symbol, VecDeque<Sale>>, VecDeque<Sale>) {
+(HashMap<Symbol, VecDeque<Sale>>, VecDeque<Sale>) {
     let mut trades_by_gained : HashMap<Symbol, VecDeque<Sale>> = HashMap::new();
     let mut final_sales : VecDeque<Sale> = VecDeque::new();
 
@@ -231,7 +235,7 @@ fn organize_trades(trades: &Vec<Trade>, denomination: &Symbol) ->
         let Trade{ when, kind: Kind::Trade{ gained, offered, .. }, .. } = trade;
         let sale = Sale{
             when: when.clone(),
-            original_symbol: offered.symbol.clone(),
+            original_offered: offered.clone(),
             offered: offered.clone(),
             gained: gained.clone(),
         };
@@ -262,9 +266,9 @@ mod test {
     use bigdecimal::FromPrimitive;
     use chrono::Utc;
     use chrono::offset::TimeZone;
-    use pretty_assertions::{assert_eq, assert_ne};
+    use pretty_assertions::assert_eq;
 
-    use crate::symbol::{Symbol, Fiat, Crypto, USD, BTC};
+    use crate::symbol::{Symbol, Fiat, Crypto, USD, BTC, USDT};
     use crate::{usd, usdt, eth, btc};
 
 
@@ -293,13 +297,13 @@ mod test {
         assert_eq!(rest.len(), 1);
         assert_eq!(rest.get(&BTC), Some(&VecDeque::from(vec![Sale{
             when: Utc.ymd(2020, 1, 3).and_hms(0, 0, 0),
-            original_symbol: USD,
+            original_offered: usd!(300),
             offered: usd!(300),
             gained: btc!(1),
         }])));
         assert_eq!(to_usd[0], Sale{
             when: Utc.ymd(2020, 1, 2).and_hms(0, 0, 0),
-            original_symbol: BTC,
+            original_offered: btc!(1),
             offered: btc!(1),
             gained: usd!(57000),
         });
@@ -327,6 +331,8 @@ mod test {
         let realizations = portfolio.realizations(&USD);
         assert_eq!(realizations, vec![
             Realization{
+                amount: "1".parse().unwrap(),
+                symbol: BTC,
                 description: "BTC sold via BTC-USD pair".into(),
                 acquired_when: Some(Utc.ymd(2017, 1, 1).and_hms(0, 0, 0)),
                 disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
@@ -359,6 +365,8 @@ mod test {
         let realizations = portfolio.realizations(&USD);
         assert_eq!(realizations, vec![
             Realization{
+                amount: "1".parse().unwrap(),
+                symbol: BTC,
                 description: "BTC sold via BTC-USD pair".into(),
                 acquired_when: Some(Utc.ymd(2017, 1, 1).and_hms(0, 0, 0)),
                 disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
@@ -391,7 +399,9 @@ mod test {
         let realizations = portfolio.realizations(&USD);
         assert_eq!(realizations, vec![
             Realization{
+                amount: "0.5".parse().unwrap(),
                 description: "BTC sold via BTC-USD pair".into(),
+                symbol: BTC,
                 acquired_when: Some(Utc.ymd(2017, 1, 1).and_hms(0, 0, 0)),
                 disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
                 proceeds: BigDecimal::from_f32(600.).unwrap(),
@@ -430,7 +440,9 @@ mod test {
         let realizations = portfolio.realizations(&USD);
         assert_eq!(realizations, vec![
             Realization{
+                amount: "0.5".parse().unwrap(),
                 description: "BTC sold via BTC-USD pair".into(),
+                symbol: BTC,
                 acquired_when: Some(Utc.ymd(2017, 1, 1).and_hms(0, 0, 0)),
                 disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
                 proceeds: BigDecimal::from_f32(600.).unwrap(),
@@ -438,7 +450,9 @@ mod test {
                 gain: BigDecimal::from_f32(100.).unwrap(),
             },
             Realization{
+                amount: "0.25".parse().unwrap(),
                 description: "BTC sold via BTC-USD pair".into(),
+                symbol: BTC,
                 acquired_when: Some(Utc.ymd(2017, 1, 1).and_hms(0, 0, 0)),
                 disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
                 proceeds: BigDecimal::from_f32(700.).unwrap(),
@@ -477,7 +491,9 @@ mod test {
         let realizations = portfolio.realizations(&USD);
         assert_eq!(realizations, vec![
             Realization{
+                amount: "1".parse().unwrap(),
                 description: "BTC sold via BTC-USD pair".into(),
+                symbol: BTC,
                 acquired_when: Some(Utc.ymd(2017, 1, 1).and_hms(0, 0, 0)),
                 disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
                 proceeds: BigDecimal::from_f32(2000.).unwrap(),
@@ -485,7 +501,9 @@ mod test {
                 gain: BigDecimal::from_f32(1000.).unwrap(),
             },
             Realization{
+                amount: "1".parse().unwrap(),
                 description: "BTC sold via BTC-USD pair".into(),
+                symbol: BTC,
                 acquired_when: Some(Utc.ymd(2018, 1, 1).and_hms(0, 0, 0)),
                 disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
                 proceeds: BigDecimal::from_f32(2000.).unwrap(),
@@ -517,7 +535,9 @@ mod test {
         let realizations = portfolio.realizations(&USD);
         assert_eq!(realizations, vec![
             Realization{
+                amount: "1".parse().unwrap(),
                 description: "BTC sold via BTC-USD pair".into(),
+                symbol: BTC,
                 acquired_when: Some(Utc.ymd(2017, 1, 1).and_hms(0, 0, 0)),
                 disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
                 proceeds: BigDecimal::from_f32(2000.).unwrap(),
@@ -525,7 +545,9 @@ mod test {
                 gain: BigDecimal::from_f32(1000.).unwrap(),
             },
             Realization{
+                amount: "1".parse().unwrap(),
                 description: "BTC sold via BTC-USD pair".into(),
+                symbol: BTC,
                 acquired_when: None,
                 disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
                 proceeds: BigDecimal::from_f32(2000.).unwrap(),
@@ -564,7 +586,9 @@ mod test {
         let realizations = portfolio.realizations(&USD);
         assert_eq!(realizations, vec![
             Realization{
+                amount: "2000".parse().unwrap(),
                 description: "USDT sold via USDT-USD pair".into(),
+                symbol: USDT,
                 acquired_when: Some(Utc.ymd(2017, 1, 1).and_hms(0, 0, 0)),
                 disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
                 proceeds: BigDecimal::from_f32(2000.).unwrap(),
@@ -603,7 +627,9 @@ mod test {
         let realizations = portfolio.realizations(&USD);
         assert_eq!(realizations, vec![
             Realization{
+                amount: "2000".parse().unwrap(),
                 description: "USDT sold via USDT-USD pair".into(),
+                symbol: USDT,
                 acquired_when: Some(Utc.ymd(2017, 1, 1).and_hms(0, 0, 0)),
                 disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
                 proceeds: BigDecimal::from_f32(2000.).unwrap(),
@@ -642,7 +668,9 @@ mod test {
         let realizations = portfolio.realizations(&USD);
         assert_eq!(realizations, vec![
             Realization{
+                amount: "1000".parse().unwrap(),
                 description: "USDT sold via USDT-USD pair".into(),
+                symbol: USDT,
                 acquired_when: Some(Utc.ymd(2017, 1, 1).and_hms(0, 0, 0)),
                 disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
                 proceeds: BigDecimal::from_f32(2000.).unwrap(),
@@ -697,7 +725,9 @@ mod test {
         let realizations = portfolio.realizations(&USD);
         assert_eq!(realizations, vec![
             Realization {
+                amount: "1".parse().unwrap(),
                 description: "USDT sold via USDT-USD pair".into(),
+                symbol: USDT,
                 acquired_when: Some(Utc.ymd(2016, 1, 1).and_hms(0, 0, 0)),
                 disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
                 proceeds: "1.".parse().unwrap(),
@@ -705,7 +735,9 @@ mod test {
                 gain: "0.".parse().unwrap(),
             },
             Realization {
+                amount: "1".parse().unwrap(),
                 description: "USDT sold via USDT-USD pair".into(),
+                symbol: USDT,
                 acquired_when: Some(Utc.ymd(2016, 1, 2).and_hms(0, 0, 0)),
                 disposed_when: Utc.ymd(2020, 1, 1).and_hms(0, 0, 0),
                 proceeds: "1.".parse().unwrap(),
@@ -713,7 +745,9 @@ mod test {
                 gain: "0.".parse().unwrap(),
             },
             Realization {
+                amount: "1".parse().unwrap(),
                 description: "USDT sold via USDT-USD pair".into(),
+                symbol: USDT,
                 acquired_when: Some(Utc.ymd(2016, 1, 3).and_hms(0, 0, 0)),
                 disposed_when: Utc.ymd(2020, 1, 2).and_hms(0, 0, 0),
                 proceeds: "1.".parse().unwrap(),
@@ -738,7 +772,9 @@ mod test {
         let realizations = portfolio.realizations(&USD);
         assert_eq!(realizations, vec![
             Realization {
+                amount: "0.2".parse().unwrap(),
                 description: "BTC sold via BTC-USD pair".into(),
+                symbol: BTC,
                 acquired_when: None,
                 disposed_when: Utc.ymd(2016, 1, 1).and_hms(0, 0, 0),
                 proceeds: "3900.".parse().unwrap(),
@@ -799,7 +835,9 @@ mod test {
         let realizations = portfolio.realizations(&USD);
         assert_eq!(realizations, vec![
             Realization{
+                amount: "0.0625".parse().unwrap(),
                 description: "BTC sold via BTC-USD pair".into(),
+                symbol: BTC,
                 acquired_when: Some(Utc.ymd(2016, 1, 1).and_hms(0, 0, 0)),
                 disposed_when: Utc.ymd(2020, 1, 2).and_hms(0, 0, 0),
                 proceeds: BigDecimal::from_f32(2500.).unwrap(),
@@ -807,7 +845,9 @@ mod test {
                 gain: BigDecimal::from_f32(2400.).unwrap(),
             },
             Realization{
+                amount: "0.0625".parse().unwrap(),
                 description: "BTC sold via BTC-USD pair".into(),
+                symbol: BTC,
                 acquired_when: Some(Utc.ymd(2016, 1, 2).and_hms(0, 0, 0)),
                 disposed_when: Utc.ymd(2020, 1, 2).and_hms(0, 0, 0),
                 proceeds: BigDecimal::from_f32(1500.).unwrap(),
@@ -815,6 +855,5 @@ mod test {
                 gain: BigDecimal::from_f32(1440.).unwrap(),
             }
         ]);
-
     }
 }

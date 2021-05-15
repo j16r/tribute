@@ -8,7 +8,7 @@ use crate::amount::Amount;
 use crate::portfolio::{Portfolio, Trade, Kind};
 use crate::symbol::Symbol;
 use crate::types::DateTime;
-use crate::types::{format_usd_amount, deserialize_amount, deserialize_date};
+use crate::types::{format_amount, format_usd_amount, deserialize_amount, deserialize_date};
 
 #[derive(Debug, Deserialize)]
 struct Record {
@@ -34,12 +34,19 @@ struct Record {
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Realization {
+    pub amount: BigDecimal,
     pub description: String,
+    pub symbol: Symbol,
     pub acquired_when: Option<DateTime>,
     pub disposed_when: DateTime,
     pub proceeds: BigDecimal,
     pub cost_basis: BigDecimal,
     pub gain: BigDecimal,
+}
+
+pub enum Format {
+    IRS1099B,
+    TurboTax,
 }
 
 pub fn report(year: u16, denomination: &Symbol) -> Result<()> {
@@ -88,45 +95,76 @@ pub fn report(year: u16, denomination: &Symbol) -> Result<()> {
 
     let mut writer = csv::Writer::from_writer(io::stdout());
 
-    writer.write_record(&[
-        "Description of property",
-        "Date acquired",
-        "Date sold or disposed of",
-        "Proceeds",
-        "Cost basis",
-        "Gain or (loss)",
-    ])?;
+    let format = Format::TurboTax;
+    match format {
+        Format::IRS1099B => {
+            writer.write_record(&[
+                "Description of property",
+                "Date acquired",
+                "Date sold or disposed of",
+                "Proceeds",
+                "Cost basis",
+                "Gain or (loss)",
+            ])?;
 
-    let (mut total_proceeds, mut total_cost, mut total_gain) =
-        (BigDecimal::zero(), BigDecimal::zero(), BigDecimal::zero());
-    for realization in portfolio.realizations(&denomination) {
-        let year_of_sale = realization.disposed_when.year();
-        if year_of_sale != year as i32 {
-            continue;
+            let (mut total_proceeds, mut total_cost, mut total_gain) =
+                (BigDecimal::zero(), BigDecimal::zero(), BigDecimal::zero());
+            for realization in portfolio.realizations(&denomination) {
+                let year_of_sale = realization.disposed_when.year();
+                if year_of_sale != year as i32 {
+                    continue;
+                }
+
+                total_proceeds += &realization.proceeds;
+                total_cost += &realization.cost_basis;
+                total_gain += &realization.gain;
+
+                writer.write_record(&[
+                    realization.description,
+                    realization.acquired_when.map_or("".to_string(), |d| d.format("%D").to_string()),
+                    realization.disposed_when.format("%D").to_string(),
+                    format_usd_amount(&realization.proceeds),
+                    format_usd_amount(&realization.cost_basis),
+                    format_usd_amount(&realization.gain),
+                ])?;
+            }
+
+            writer.write_record(&[
+                "Total",
+                "",
+                "",
+                &format_usd_amount(&total_proceeds),
+                &format_usd_amount(&total_cost),
+                &format_usd_amount(&total_gain),
+            ])?;
+        },
+        Format::TurboTax => {
+            writer.write_record(&[
+                "Amount",
+                "Currency Name",
+                "Purchase Date",
+                "Date Sold",
+                "Cost Basis",
+                "Proceeds",
+            ])?;
+
+            for realization in portfolio.realizations(&denomination) {
+                let year_of_sale = realization.disposed_when.year();
+                if year_of_sale != year as i32 {
+                    continue;
+                }
+
+                writer.write_record(&[
+                    format_amount(&realization.amount),
+                    realization.symbol.symbol(),
+                    realization.acquired_when.map_or("".to_string(), |d| d.format("%D").to_string()),
+                    realization.disposed_when.format("%D").to_string(),
+                    format_usd_amount(&realization.cost_basis),
+                    format_usd_amount(&realization.proceeds),
+                ])?;
+            }
         }
-
-        total_proceeds += &realization.proceeds;
-        total_cost += &realization.cost_basis;
-        total_gain += &realization.gain;
-
-        writer.write_record(&[
-            realization.description,
-            realization.acquired_when.map_or("".to_string(), |d| d.format("%D").to_string()),
-            realization.disposed_when.format("%D").to_string(),
-            format_usd_amount(&realization.proceeds),
-            format_usd_amount(&realization.cost_basis),
-            format_usd_amount(&realization.gain),
-        ])?;
     }
-
-    writer.write_record(&[
-        "Total",
-        "",
-        "",
-        &format_usd_amount(&total_proceeds),
-        &format_usd_amount(&total_cost),
-        &format_usd_amount(&total_gain),
-    ])?;
 
     writer.flush()?;
 

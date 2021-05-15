@@ -63,17 +63,17 @@ impl Portfolio {
     }
 
     fn buy(&mut self, date: DateTime, _offered: &Amount, gained: &Amount) {
-        let wallet = self.wallets
+        self.wallets
             .entry(gained.symbol)
-            .or_insert_with(|| Wallet::new(&gained.symbol));
-        wallet.add_lot(&gained.amount, &gained.amount, date);
+            .or_insert_with(|| Wallet::new(&gained.symbol))
+            .add_lot(&gained.amount, &gained.amount, date);
     }
 
     fn sell(&mut self, _date: DateTime, offered: &Amount, gained: &Amount) {
-        let wallet = self.wallets
-            .entry(offered.symbol)
-            .or_insert_with(|| Wallet::new(&gained.symbol));
-        wallet.sell(&offered.amount);
+        self.wallets
+            .entry(gained.symbol)
+            .or_insert_with(|| Wallet::new(&gained.symbol))
+            .sell(&gained.amount);
     }
 
     pub fn realizations(&self, denomination: &Symbol) -> Vec<Realization> {
@@ -90,12 +90,10 @@ impl Portfolio {
                     original = trade.original_symbol.symbol(),
                 );
 
+            eprintln!("\nStarting new trade match");
             dbg!(&trade);
 
             if let Some(matching_sales) = trades_by_gained.get_mut(&trade.offered.symbol) {
-                eprintln!("\nStarting new trade match");
-                dbg!(&trade);
-
                 if matching_sales.is_empty() {
                     let realization = Realization{
                         description: description.clone(),

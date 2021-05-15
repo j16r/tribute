@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::error::Error;
 use std::thread;
 use std::time::Duration;
@@ -114,6 +115,7 @@ pub async fn transactions(
 ) -> Result<Vec<Transaction>, Box<dyn Error>> {
     let client = ThrottledClient::new(key, secret, passphrase);
 
+    let mut observed_transactions = HashSet::new();
     let mut transactions = Vec::new();
 
     let accounts = client.get_accounts().await.unwrap();
@@ -128,6 +130,11 @@ pub async fn transactions(
         while let Some(account_hist_result) = account_hist_stream.next().await {
             for trade in account_hist_result? {
                 if let AccountHistoryDetails::Match { product_id, trade_id, .. } = trade.details {
+                    if observed_transactions.contains(&trade_id) {
+                        continue;
+                    }
+                    observed_transactions.insert(trade_id);
+
                     let time_of_trade = trade.created_at;
 
                     let rate = client.get_rate_at(&product_id, time_of_trade).await?;

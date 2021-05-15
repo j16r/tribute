@@ -41,17 +41,18 @@ pub async fn transactions(key: &str, secret: &str) -> Result<Vec<Transaction>> {
                         let usd_rate = &usd_amount / &trade_amount;
 
                         let product_id = format!("{}-{}", &code, &trade.native_amount.currency);
-                        transactions.push(Transaction {
+                        let transaction = Transaction {
                             id: trade.id.to_string(),
                             market: product_id,
                             token: code.clone(),
                             amount: trade_amount,
-                            rate: BigDecimal::from(1),
+                            rate: usd_rate.clone(),
                             usd_rate,
                             usd_amount,
                             created_at: trade.created_at,
                             provider: PROVIDER,
-                        });
+                        };
+                        transactions.push(transaction);
                     }
                 }
             }

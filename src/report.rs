@@ -55,14 +55,14 @@ pub fn report(year: u16, denomination: &Symbol) -> Result<(), Box<dyn Error>> {
             .unwrap()
             .with_timezone(&chrono::Utc);
 
-        let rate = parse_amount(line_item.get(5).unwrap()).unwrap();
+        let rate = parse_amount(line_item.get(4).unwrap()).unwrap();
 
         let market_components = market.split("-").collect::<Vec<_>>();
         let from_symbol : Symbol = market_components[0].parse().unwrap();
         let to_symbol : Symbol = market_components[1].parse().unwrap();
 
-        if amount >= BigDecimal::zero() {
-            portfolio.add_trade(&Trade{
+        let trade = if amount >= BigDecimal::zero() {
+            Trade{
                 when: date_of_sale,
                 kind: Kind::Trade{
                     offered: Amount{
@@ -74,9 +74,9 @@ pub fn report(year: u16, denomination: &Symbol) -> Result<(), Box<dyn Error>> {
                         symbol: from_symbol,
                     },
                 }
-            });
+            }
         } else {
-            portfolio.add_trade(&Trade{
+            Trade{
                 when: date_of_sale,
                 kind: Kind::Trade{
                     offered: Amount{
@@ -88,8 +88,9 @@ pub fn report(year: u16, denomination: &Symbol) -> Result<(), Box<dyn Error>> {
                         symbol: to_symbol,
                     },
                 }
-            });
-        }
+            }
+        };
+        portfolio.add_trade(&trade);
     }
 
     let mut writer = csv::Writer::from_writer(io::stdout());

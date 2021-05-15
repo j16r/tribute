@@ -1,4 +1,5 @@
 use std::io;
+use std::str::FromStr;
 
 use bigdecimal::{BigDecimal, Zero};
 use chrono::{self, Datelike};
@@ -44,10 +45,27 @@ pub struct Realization {
     pub gain: BigDecimal,
 }
 
-#[derive(Debug, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseFormatError {}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
 pub enum Format {
+    #[serde(alias = "irs", alias = "irs1099b")]
     IRS1099B,
+    #[serde(alias = "turbotax")]
     TurboTax,
+}
+
+impl FromStr for Format {
+    type Err = ParseFormatError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_ref() {
+            "irs" | "irs1099b" => Ok(Format::IRS1099B),
+            "turbotax" => Ok(Format::TurboTax),
+            _ => Err(ParseFormatError{}),
+        }
+    }
 }
 
 pub fn report(year: u16, denomination: &Symbol, format: &Option<Format>) -> Result<()> {

@@ -63,6 +63,14 @@ pub fn format_amount(amount: &BigDecimal) -> String {
     }
 }
 
+pub fn format_amount_for_turbotax(amount: &BigDecimal) -> String {
+    if amount < &BigDecimal::zero() {
+        format!("({:.8})", amount.abs())
+    } else {
+        format!("{:.8}", amount)
+    }
+}
+
 pub fn deserialize_amount<'de, D: Deserializer<'de>>(deserializer: D) -> Result<BigDecimal, D::Error> {
     let input = String::deserialize(deserializer)?;
     parse_amount(&input).map_err(|_e| {

@@ -9,7 +9,7 @@ use crate::amount::Amount;
 use crate::portfolio::{Portfolio, Trade, Kind};
 use crate::symbol::Symbol;
 use crate::types::DateTime;
-use crate::types::{format_amount, format_usd_amount, deserialize_amount, deserialize_date};
+use crate::types::{format_amount, format_amount_for_turbotax, format_usd_amount, deserialize_amount, deserialize_date};
 
 #[derive(Debug, Deserialize)]
 struct Record {
@@ -173,12 +173,12 @@ pub fn report(year: u16, denomination: &Symbol, format: &Option<Format>) -> Resu
                 }
 
                 writer.write_record(&[
-                    format_amount(&realization.amount),
+                    format_amount_for_turbotax(&realization.amount),
                     realization.symbol.symbol(),
-                    realization.acquired_when.map_or("".to_string(), |d| d.format("%D").to_string()),
-                    realization.disposed_when.format("%D").to_string(),
-                    format_usd_amount(&realization.cost_basis),
-                    format_usd_amount(&realization.proceeds),
+                    realization.acquired_when.map_or("".to_string(), |d| d.format("%D %R").to_string()),
+                    realization.disposed_when.format("%D %R").to_string(),
+                    format_amount(&realization.cost_basis),
+                    format_amount(&realization.proceeds),
                 ])?;
             }
         }

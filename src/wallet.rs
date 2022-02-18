@@ -2,8 +2,8 @@ use std::fmt;
 
 use bigdecimal::{BigDecimal, Zero};
 
-use crate::types::DateTime;
 use crate::symbol::Symbol;
+use crate::types::DateTime;
 
 #[derive(Debug)]
 pub struct Lot {
@@ -22,7 +22,6 @@ pub struct Sale {
     // when was the first purchase of tokens made
     pub date_of_purchase: Option<DateTime>,
 }
-
 
 pub struct Wallet {
     token: Symbol,
@@ -49,7 +48,12 @@ impl Wallet {
             unit_cost: unit_cost.clone(),
             date_of_purchase: date,
         });
-        eprintln!("Bought {:} of {:} resulting in a balance of {:}", amount, self.token, &self.cumulative_bought - &self.cumulative_sold);
+        eprintln!(
+            "Bought {:} of {:} resulting in a balance of {:}",
+            amount,
+            self.token,
+            &self.cumulative_bought - &self.cumulative_sold
+        );
     }
 
     // the total cost basis of everything in this wallet
@@ -62,10 +66,7 @@ impl Wallet {
 
     // the number of tokens stored in this wallet
     pub fn count(&self) -> BigDecimal {
-        self.lots
-            .iter()
-            .map(|lot| &lot.amount)
-            .sum()
+        self.lots.iter().map(|lot| &lot.amount).sum()
     }
 
     // sell some tokens, returning the Sale, remove any lots that were completely consumed
@@ -94,10 +95,20 @@ impl Wallet {
             amount_to_consume -= &lot.amount;
             lots_consumed += 1;
         }
-        eprintln!("Sold {:} of {:} resulting in a balance of {:}", amount, self.token, &self.cumulative_bought - &self.cumulative_sold);
+        eprintln!(
+            "Sold {:} of {:} resulting in a balance of {:}",
+            amount,
+            self.token,
+            &self.cumulative_bought - &self.cumulative_sold
+        );
 
         if amount_to_consume > BigDecimal::zero() {
-            eprintln!("Sale of {:} could not be satisfied, amount to consume = {:} (only {:} was sold)", self.token, amount_to_consume, amount - &amount_to_consume);
+            eprintln!(
+                "Sale of {:} could not be satisfied, amount to consume = {:} (only {:} was sold)",
+                self.token,
+                amount_to_consume,
+                amount - &amount_to_consume
+            );
         }
 
         self.lots.drain(..lots_consumed);
@@ -228,4 +239,3 @@ mod test {
         assert!(wallet.count().is_zero());
     }
 }
-

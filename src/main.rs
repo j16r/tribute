@@ -36,16 +36,14 @@ use crate::report::Format;
 
 #[tokio::main]
 async fn main() {
-    let config = load_config(None).unwrap_or_else(|error| {
-        match error {
-            ConfigError::TomlError(e) => {
-                eprintln!("Error parsing config.rs: {}", e);
-                process::exit(1);
-            },
-            e => {
-                eprintln!("Error loading config.rs: {:?}", e);
-                process::exit(1);
-            }
+    let config = load_config(None).unwrap_or_else(|error| match error {
+        ConfigError::TomlError(e) => {
+            eprintln!("Error parsing config.rs: {}", e);
+            process::exit(1);
+        }
+        e => {
+            eprintln!("Error loading config.rs: {:?}", e);
+            process::exit(1);
         }
     });
 
@@ -56,7 +54,9 @@ async fn main() {
         .subcommand(SubCommand::with_name("export").about("Exports your exchange order history"))
         .subcommand(
             SubCommand::with_name("report")
-                .args_from_usage("--format=[FORMAT] 'Sets the output report format, one of: IRS1099B,TurboTax'")
+                .args_from_usage(
+                    "--format=[FORMAT] 'Sets the output report format, one of: IRS1099B,TurboTax'",
+                )
                 .about("Create a report from your order history"),
         )
         .get_matches();
@@ -67,7 +67,10 @@ async fn main() {
             process::exit(1);
         }
     } else if let Some(subcommand) = matches.subcommand_matches("report") {
-        let format : Option<Format> = subcommand.value_of("format").map(|v| v.parse().unwrap()).or(config.report_format.clone());
+        let format: Option<Format> = subcommand
+            .value_of("format")
+            .map(|v| v.parse().unwrap())
+            .or(config.report_format.clone());
         if let Err(err) = report::report(config.tax_year, &config.denomination(), &format) {
             eprintln!("Error while generating report: {}", err);
             process::exit(1);

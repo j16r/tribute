@@ -6,9 +6,9 @@ use std::path::PathBuf;
 
 use bigdecimal::BigDecimal;
 
+use crate::report::Format;
 use crate::symbol::{Symbol, USD};
 use crate::types::{self, DateTime};
-use crate::report::Format;
 
 #[derive(Clone, Deserialize, Debug, PartialEq)]
 pub struct Transaction {
@@ -84,8 +84,10 @@ impl Config {
     }
 
     pub fn denomination(&self) -> Symbol {
-        self.denomination.as_ref()
-            .and_then(|s| s.parse().ok()).unwrap_or(USD)
+        self.denomination
+            .as_ref()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(USD)
     }
 }
 
@@ -216,9 +218,10 @@ mod test {
                         created_at: Some(Datetime::from_str("1997-08-04").unwrap()),
                     },
                 ]),
-                accounts: Some(vec![
-                    web3::types::H160::from_str("ffffffffffffffffffffffffffffffffffffffff").unwrap(),
-                ]),
+                accounts: Some(vec![web3::types::H160::from_str(
+                    "ffffffffffffffffffffffffffffffffffffffff"
+                )
+                .unwrap(),]),
                 denomination: None,
                 report_format: None,
             }
@@ -253,8 +256,6 @@ mod test {
         let mut file = fs::File::create(&config_path).expect("File::create");
         file.write_all(body.as_bytes()).expect("file.write_all");
 
-        Ok(Project {
-            root: project_root,
-        })
+        Ok(Project { root: project_root })
     }
 }

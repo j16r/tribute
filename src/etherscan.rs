@@ -49,7 +49,8 @@ async fn txlist(api_key: &str, account: &web3::types::H160) -> Result<Vec<Tx>, B
         "endblock=999999999",
         "sort=asc",
         &format!("apiKey={}", api_key),
-    ].join("&");
+    ]
+    .join("&");
     let url = format!("https://api.etherscan.io/api?{}", query);
 
     let response = reqwest::get(&url).await?.json::<Response>().await?;

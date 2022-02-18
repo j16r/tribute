@@ -2,9 +2,9 @@ use std::str::FromStr;
 
 use std::fmt::{Debug, Display, Error, Formatter};
 
-pub const USD : Symbol = Symbol::Fiat(Fiat::USD);
-pub const BTC : Symbol = Symbol::Crypto(Crypto::BTC);
-pub const USDT : Symbol = Symbol::Crypto(Crypto::USDT);
+pub const USD: Symbol = Symbol::Fiat(Fiat::USD);
+pub const BTC: Symbol = Symbol::Crypto(Crypto::BTC);
+pub const USDT: Symbol = Symbol::Crypto(Crypto::USDT);
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum Symbol {
@@ -236,7 +236,7 @@ impl FromStr for Symbol {
             "USDT" => Ok(Symbol::Crypto(Crypto::USDT)),
             "XLM" => Ok(Symbol::Crypto(Crypto::XLM)),
 
-            _ => Err(ParseSymbolError{})
+            _ => Err(ParseSymbolError {}),
         }
     }
 }
@@ -409,7 +409,6 @@ pub enum Fiat {
     ZAR,
     ZMW,
     ZWB,
-
     // Other(String),
 }
 
@@ -581,7 +580,6 @@ impl Display for Fiat {
             Fiat::ZAR => f.write_str("ZAR")?,
             Fiat::ZMW => f.write_str("ZMW")?,
             Fiat::ZWB => f.write_str("ZWB")?,
-
             // Fiat::Other(ref symbol) => f.write_str(&symbol)?,
         }
         Ok(())
@@ -756,7 +754,6 @@ impl Fiat {
             Fiat::ZAR => "ZAR".to_string(),
             Fiat::ZMW => "ZMW".to_string(),
             Fiat::ZWB => "ZWB".to_string(),
-
             // Fiat::Other(ref symbol) => f.write_str(&symbol)?,
         }
     }
@@ -785,7 +782,6 @@ pub enum Crypto {
     OXT,
     USDT,
     XLM,
-
     // Other(String),
 }
 
@@ -812,7 +808,6 @@ impl Display for Crypto {
             Crypto::OXT => f.write_str("OXT")?,
             Crypto::USDT => f.write_str("USDT")?,
             Crypto::XLM => f.write_str("XLM")?,
-
             // Crypto::Other(ref symbol) => f.write_str(&symbol)?,
         }
         Ok(())

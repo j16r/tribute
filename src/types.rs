@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-use bigdecimal::{BigDecimal, ParseBigDecimalError, Zero, FromPrimitive};
+use bigdecimal::{BigDecimal, FromPrimitive, ParseBigDecimalError, Zero};
 use chrono::ParseError;
 use regex::Regex;
 use serde::de::{self, Deserializer};
@@ -71,18 +71,16 @@ pub fn format_amount_for_turbotax(amount: &BigDecimal) -> String {
     }
 }
 
-pub fn deserialize_amount<'de, D: Deserializer<'de>>(deserializer: D) -> Result<BigDecimal, D::Error> {
+pub fn deserialize_amount<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<BigDecimal, D::Error> {
     let input = String::deserialize(deserializer)?;
-    parse_amount(&input).map_err(|_e| {
-        de::Error::invalid_value(de::Unexpected::Str(&input), &"")
-    })
+    parse_amount(&input).map_err(|_e| de::Error::invalid_value(de::Unexpected::Str(&input), &""))
 }
 
 pub fn deserialize_date<'de, D: Deserializer<'de>>(deserializer: D) -> Result<DateTime, D::Error> {
     let input = String::deserialize(deserializer)?;
-    parse_date(&input).map_err(|_e| {
-        de::Error::invalid_value(de::Unexpected::Str(&input), &"")
-    })
+    parse_date(&input).map_err(|_e| de::Error::invalid_value(de::Unexpected::Str(&input), &""))
 }
 
 pub fn parse_amount(input: &str) -> Result<BigDecimal, ParseBigDecimalError> {
@@ -104,9 +102,15 @@ fn test_parse_amount() {
     assert_eq!(parse_amount("0"), Ok(BigDecimal::from_f32(0.0).unwrap()));
     assert_eq!(parse_amount("0.0"), Ok(BigDecimal::from_f32(0.0).unwrap()));
     assert_eq!(parse_amount("1.1"), Ok(BigDecimal::from_f32(1.1).unwrap()));
-    assert_eq!(parse_amount("(1.0)"), Ok(BigDecimal::from_f32(-1.0).unwrap()));
+    assert_eq!(
+        parse_amount("(1.0)"),
+        Ok(BigDecimal::from_f32(-1.0).unwrap())
+    );
     assert_eq!(parse_amount("$1.0"), Ok(BigDecimal::from_f32(1.0).unwrap()));
-    assert_eq!(parse_amount("($3.1427)"), Ok(BigDecimal::from_f32(-3.1427).unwrap()));
+    assert_eq!(
+        parse_amount("($3.1427)"),
+        Ok(BigDecimal::from_f32(-3.1427).unwrap())
+    );
 
     assert!(parse_amount("").is_err());
 }

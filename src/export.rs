@@ -44,17 +44,15 @@ pub async fn export(config: &Config) -> Result<(), Box<dyn Error>> {
                     eprintln!("Specified ethereum configuration with no accounts");
                     vec![]
                 }
-            },
-            Exchange::Etherscan {
-                ref key,
-            } => {
+            }
+            Exchange::Etherscan { ref key } => {
                 if let Some(ref a) = config.accounts {
                     etherscan::transactions(key, a).await?
                 } else {
                     eprintln!("Specified etherscan configuration with no accounts");
                     vec![]
                 }
-            },
+            }
         });
     }
 
@@ -85,9 +83,9 @@ pub async fn export(config: &Config) -> Result<(), Box<dyn Error>> {
             &format_amount(&transaction.rate),
             &format_usd_amount(&transaction.usd_rate),
             &format_usd_amount(&transaction.usd_amount),
-            &transaction
-                .created_at
-                .map_or("".to_string(), |t| t.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)),
+            &transaction.created_at.map_or("".to_string(), |t| {
+                t.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
+            }),
             transaction.provider,
         ])?;
     }

@@ -1,15 +1,18 @@
 use std::io;
 use std::str::FromStr;
 
+use anyhow::Result;
 use bigdecimal::{BigDecimal, Zero};
 use chrono::{self, Datelike};
-use anyhow::Result;
 
 use crate::amount::Amount;
-use crate::portfolio::{Portfolio, Trade, Kind};
+use crate::portfolio::{Kind, Portfolio, Trade};
 use crate::symbol::Symbol;
 use crate::types::DateTime;
-use crate::types::{format_amount, format_amount_for_turbotax, format_usd_amount, deserialize_amount, deserialize_date};
+use crate::types::{
+    deserialize_amount, deserialize_date, format_amount, format_amount_for_turbotax,
+    format_usd_amount,
+};
 
 #[derive(Debug, Deserialize)]
 struct Record {
@@ -63,7 +66,7 @@ impl FromStr for Format {
         match s.to_lowercase().as_ref() {
             "irs" | "irs1099b" => Ok(Format::IRS1099B),
             "turbotax" => Ok(Format::TurboTax),
-            _ => Err(ParseFormatError{}),
+            _ => Err(ParseFormatError {}),
         }
     }
 }
@@ -77,36 +80,36 @@ pub fn report(year: u16, denomination: &Symbol, format: &Option<Format>) -> Resu
         let record: Record = result?;
 
         let market_components = record.market.split('-').collect::<Vec<_>>();
-        let from_symbol : Symbol = market_components[0].parse().unwrap();
-        let to_symbol : Symbol = market_components[1].parse().unwrap();
+        let from_symbol: Symbol = market_components[0].parse().unwrap();
+        let to_symbol: Symbol = market_components[1].parse().unwrap();
 
         let trade = if record.amount >= BigDecimal::zero() {
-            Trade{
+            Trade {
                 when: record.created_at,
-                kind: Kind::Trade{
-                    offered: Amount{
+                kind: Kind::Trade {
+                    offered: Amount {
                         amount: &record.rate * &record.amount.abs(),
                         symbol: to_symbol,
                     },
-                    gained: Amount{
+                    gained: Amount {
                         amount: record.amount.abs().clone(),
                         symbol: from_symbol,
                     },
-                }
+                },
             }
         } else {
-            Trade{
+            Trade {
                 when: record.created_at,
-                kind: Kind::Trade{
-                    offered: Amount{
+                kind: Kind::Trade {
+                    offered: Amount {
                         amount: record.amount.abs().clone(),
                         symbol: from_symbol,
                     },
-                    gained: Amount{
+                    gained: Amount {
                         amount: &record.rate * &record.amount.abs(),
                         symbol: to_symbol,
                     },
-                }
+                },
             }
         };
         portfolio.add_trade(&trade);
@@ -139,7 +142,9 @@ pub fn report(year: u16, denomination: &Symbol, format: &Option<Format>) -> Resu
 
                 writer.write_record(&[
                     realization.description,
-                    realization.acquired_when.map_or("".to_string(), |d| d.format("%D").to_string()),
+                    realization
+                        .acquired_when
+                        .map_or("".to_string(), |d| d.format("%D").to_string()),
                     realization.disposed_when.format("%D").to_string(),
                     format_usd_amount(&realization.proceeds),
                     format_usd_amount(&realization.cost_basis),
@@ -155,7 +160,7 @@ pub fn report(year: u16, denomination: &Symbol, format: &Option<Format>) -> Resu
                 &format_usd_amount(&total_cost),
                 &format_usd_amount(&total_gain),
             ])?;
-        },
+        }
         Format::TurboTax => {
             writer.write_record(&[
                 "Amount",
@@ -175,7 +180,9 @@ pub fn report(year: u16, denomination: &Symbol, format: &Option<Format>) -> Resu
                 writer.write_record(&[
                     format_amount_for_turbotax(&realization.amount),
                     realization.symbol.symbol(),
-                    realization.acquired_when.map_or("".to_string(), |d| d.format("%D %R").to_string()),
+                    realization
+                        .acquired_when
+                        .map_or("".to_string(), |d| d.format("%D %R").to_string()),
                     realization.disposed_when.format("%D %R").to_string(),
                     format_amount(&realization.cost_basis),
                     format_amount(&realization.proceeds),

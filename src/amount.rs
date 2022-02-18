@@ -22,10 +22,10 @@ impl Display for Amount {
         match self.symbol {
             Symbol::Fiat(ref symbol) => {
                 f.write_fmt(format_args!("{:}{:.2}", symbol, self.amount))?;
-            },
+            }
             Symbol::Crypto(ref symbol) => {
                 f.write_fmt(format_args!("{:.2} {:}", self.amount, symbol))?;
-            },
+            }
         }
         Ok(())
     }
@@ -50,7 +50,7 @@ impl Display for Amount {
 #[macro_export]
 macro_rules! usd {
     ($amount:expr) => {
-        Amount{
+        Amount {
             amount: stringify!($amount).parse().unwrap(),
             symbol: Symbol::Fiat(Fiat::USD),
         }
@@ -60,7 +60,7 @@ macro_rules! usd {
 #[macro_export]
 macro_rules! usdt {
     ($amount:expr) => {
-        Amount{
+        Amount {
             amount: stringify!($amount).parse().unwrap(),
             symbol: Symbol::Crypto(Crypto::USDT),
         }
@@ -70,7 +70,7 @@ macro_rules! usdt {
 #[macro_export]
 macro_rules! eth {
     ($amount:expr) => {
-        Amount{
+        Amount {
             amount: stringify!($amount).parse().unwrap(),
             symbol: Symbol::Crypto(Crypto::ETH),
         }
@@ -80,7 +80,7 @@ macro_rules! eth {
 #[macro_export]
 macro_rules! btc {
     ($amount:expr) => {
-        Amount{
+        Amount {
             amount: stringify!($amount).parse().unwrap(),
             symbol: Symbol::Crypto(Crypto::BTC),
         }
@@ -91,14 +91,26 @@ macro_rules! btc {
 mod test {
     use bigdecimal::{BigDecimal, FromPrimitive};
 
-    use crate::symbol::{Symbol, Fiat, Crypto};
+    use crate::symbol::{Crypto, Fiat, Symbol};
 
     use super::*;
 
     #[test]
     fn test_macros() {
-        assert_eq!(usd!(100.0), Amount{amount: BigDecimal::from_f32(100.0).unwrap(), symbol: Symbol::Fiat(Fiat::USD)});
-        assert_eq!(btc!(9007199254740993), Amount{amount: BigDecimal::from_i64(9007199254740993i64).unwrap(), symbol: Symbol::Crypto(Crypto::BTC)});
+        assert_eq!(
+            usd!(100.0),
+            Amount {
+                amount: BigDecimal::from_f32(100.0).unwrap(),
+                symbol: Symbol::Fiat(Fiat::USD)
+            }
+        );
+        assert_eq!(
+            btc!(9007199254740993),
+            Amount {
+                amount: BigDecimal::from_i64(9007199254740993i64).unwrap(),
+                symbol: Symbol::Crypto(Crypto::BTC)
+            }
+        );
         // assert_eq!(amt!($39.2), Amount{amount: BigDecimal::from_f32(39.2).unwrap(), symbol: Symbol::Fiat(Fiat::USD)});
         // assert_eq!(amt!(11 BTC), Amount{amount: BigDecimal::from_i32(11).unwrap(), symbol: Symbol::Crypto(Crypto::BTC)});
     }

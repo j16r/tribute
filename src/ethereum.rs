@@ -10,7 +10,10 @@ use chrono::prelude::*;
 
 const PROVIDER: &str = "ethereum";
 
-pub fn transactions(url: &str, accounts: &Vec<web3::types::H160>) -> Result<Vec<Transaction>, Box<dyn Error>> {
+pub fn transactions(
+    url: &str,
+    accounts: &Vec<web3::types::H160>,
+) -> Result<Vec<Transaction>, Box<dyn Error>> {
     let (_eloop, transport) = web3::transports::WebSocket::new(url)?;
     let web3 = web3::Web3::new(transport);
     let current_block = web3.eth().block_number().wait()?;
@@ -51,8 +54,12 @@ pub fn transactions(url: &str, accounts: &Vec<web3::types::H160>) -> Result<Vec<
     Ok(transactions)
 }
 
-fn transaction_related(accounts: &Vec<web3::types::H160>, transaction: &web3::types::Transaction) -> bool {
-    accounts.contains(&transaction.from) || transaction.to.map_or(false, |ref t| accounts.contains(t))
+fn transaction_related(
+    accounts: &Vec<web3::types::H160>,
+    transaction: &web3::types::Transaction,
+) -> bool {
+    accounts.contains(&transaction.from)
+        || transaction.to.map_or(false, |ref t| accounts.contains(t))
 }
 
 #[cfg(test)]
@@ -71,7 +78,8 @@ mod test {
 
     #[test]
     fn test_transaction_related_to() {
-        let address = web3::types::H160::from_str("4c0457c5fB35183Cb25db52C14fEA30e737fcF5e").unwrap();
+        let address =
+            web3::types::H160::from_str("4c0457c5fB35183Cb25db52C14fEA30e737fcF5e").unwrap();
         let accounts: Vec<web3::types::H160> = vec![address];
 
         let transaction_to_account = web3::types::Transaction {
@@ -84,7 +92,8 @@ mod test {
 
     #[test]
     fn test_transaction_related_from() {
-        let address = web3::types::H160::from_str("4c0457c5fB35183Cb25db52C14fEA30e737fcF5e").unwrap();
+        let address =
+            web3::types::H160::from_str("4c0457c5fB35183Cb25db52C14fEA30e737fcF5e").unwrap();
         let accounts: Vec<web3::types::H160> = vec![address];
 
         let transaction_from_account = web3::types::Transaction {

@@ -2,9 +2,9 @@ use std::str::FromStr;
 
 use anyhow::Result;
 use coinbase_rs::{Private, MAIN_URL};
-use uuid::Uuid;
-use futures::stream::StreamExt;
 use futures::pin_mut;
+use futures::stream::StreamExt;
+use uuid::Uuid;
 
 use crate::types::Transaction;
 
@@ -28,11 +28,11 @@ pub async fn transactions(key: &str, secret: &str) -> Result<Vec<Transaction>> {
                 while let Some(transactions_result) = transactions_stream.next().await {
                     for trade in transactions_result? {
                         if trade.r#type != "buy" && trade.r#type != "sell" {
-                            continue
+                            continue;
                         }
 
                         if code == trade.native_amount.currency {
-                            continue
+                            continue;
                         }
 
                         let usd_amount = trade.native_amount.amount;

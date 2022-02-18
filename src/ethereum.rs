@@ -21,7 +21,7 @@ pub fn transactions(url: &str, accounts: &Vec<web3::types::H160>) -> Result<Vec<
         let number = BlockId::Number(BlockNumber::Number(block_id.into()));
         let block = web3.eth().block_with_txs(number).wait()?;
         for transaction in block.unwrap().transactions {
-            if !transaction_related(&accounts, &transaction) {
+            if !transaction_related(accounts, &transaction) {
                 continue;
             }
 
@@ -36,7 +36,7 @@ pub fn transactions(url: &str, accounts: &Vec<web3::types::H160>) -> Result<Vec<
                     rate: BigDecimal::from(0),
                     usd_rate: BigDecimal::from(0),
                     usd_amount: BigDecimal::from(0),
-                    created_at: Some(now.into()),
+                    created_at: Some(now),
                     provider: PROVIDER,
                 };
                 transactions.push(transaction);

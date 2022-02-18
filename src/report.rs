@@ -76,7 +76,7 @@ pub fn report(year: u16, denomination: &Symbol, format: &Option<Format>) -> Resu
     for result in rdr.deserialize() {
         let record: Record = result?;
 
-        let market_components = record.market.split("-").collect::<Vec<_>>();
+        let market_components = record.market.split('-').collect::<Vec<_>>();
         let from_symbol : Symbol = market_components[0].parse().unwrap();
         let to_symbol : Symbol = market_components[1].parse().unwrap();
 
@@ -127,7 +127,7 @@ pub fn report(year: u16, denomination: &Symbol, format: &Option<Format>) -> Resu
 
             let (mut total_proceeds, mut total_cost, mut total_gain) =
                 (BigDecimal::zero(), BigDecimal::zero(), BigDecimal::zero());
-            for realization in portfolio.realizations(&denomination) {
+            for realization in portfolio.realizations(denomination) {
                 let year_of_sale = realization.disposed_when.year();
                 if year_of_sale != year as i32 {
                     continue;
@@ -166,7 +166,7 @@ pub fn report(year: u16, denomination: &Symbol, format: &Option<Format>) -> Resu
                 "Proceeds",
             ])?;
 
-            for realization in portfolio.realizations(&denomination) {
+            for realization in portfolio.realizations(denomination) {
                 let year_of_sale = realization.disposed_when.year();
                 if year_of_sale != year as i32 {
                     continue;

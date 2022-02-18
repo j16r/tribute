@@ -18,7 +18,7 @@ const PROVIDER: &str = "coinbase-pro";
 
 fn product_rhs(product_id: &str) -> Option<String> {
     product_id
-        .split("-")
+        .split('-')
         .collect::<Vec<&str>>()
         .get(1)
         .map(|v| v.clone().into())
@@ -56,7 +56,7 @@ impl ThrottledClient {
         let market_at_trade = self
             .client
             .public()
-            .get_candles(&product_id, start, end, Granularity::M1)
+            .get_candles(product_id, start, end, Granularity::M1)
             .await
             .unwrap();
 

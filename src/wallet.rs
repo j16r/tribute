@@ -34,7 +34,7 @@ pub struct Wallet {
 impl Wallet {
     pub fn new(token: &Symbol) -> Wallet {
         Wallet {
-            token: token.clone(),
+            token: *token,
             cumulative_bought: BigDecimal::zero(),
             cumulative_sold: BigDecimal::zero(),
             lots: Vec::new(),

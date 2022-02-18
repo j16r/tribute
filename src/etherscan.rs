@@ -15,7 +15,7 @@ pub async fn transactions(
     let mut transactions = Vec::new();
 
     for account in accounts.iter() {
-        let txes = txlist(&key, &account).await?;
+        let txes = txlist(key, account).await?;
 
         for tx in txes.iter() {
             let timestamp = NaiveDateTime::parse_from_str(&tx.time_stamp, "%s")?;
@@ -44,11 +44,11 @@ async fn txlist(api_key: &str, account: &web3::types::H160) -> Result<Vec<Tx>, B
     let query = vec![
         "module=account",
         "action=tokentx",
-        &format!("address={:#x}", account).to_string(),
+        &format!("address={:#x}", account),
         "startblock=0",
         "endblock=999999999",
         "sort=asc",
-        &format!("apiKey={}", api_key).to_string(),
+        &format!("apiKey={}", api_key),
     ].join("&");
     let url = format!("https://api.etherscan.io/api?{}", query);
 

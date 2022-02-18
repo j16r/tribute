@@ -42,7 +42,7 @@ async fn main() {
                 eprintln!("Error parsing config.rs: {}", e);
                 process::exit(1);
             },
-            e @ _ => {
+            e => {
                 eprintln!("Error loading config.rs: {:?}", e);
                 process::exit(1);
             }
@@ -61,7 +61,7 @@ async fn main() {
         )
         .get_matches();
 
-    if let Some(_) = matches.subcommand_matches("export") {
+    if matches.subcommand_matches("export").is_some() {
         if let Err(err) = export::export(&config).await {
             eprintln!("Error while exporting: {}", err);
             process::exit(1);

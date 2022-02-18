@@ -98,7 +98,7 @@ impl Portfolio {
                         description: description.clone(),
                         symbol: trade.original_offered.symbol,
                         acquired_when: None,
-                        disposed_when: trade.when.clone(),
+                        disposed_when: trade.when,
                         proceeds: trade.gained.amount.clone(),
                         cost_basis: BigDecimal::zero(),
                         gain: trade.gained.amount.clone(),
@@ -122,8 +122,8 @@ impl Portfolio {
                                 amount: trade.original_offered.amount.clone(),
                                 description: description.clone(),
                                 symbol: trade.original_offered.symbol,
-                                acquired_when: Some(matching.when.clone()),
-                                disposed_when: trade.when.clone(),
+                                acquired_when: Some(matching.when),
+                                disposed_when: trade.when,
                                 proceeds: proceeds.clone(),
                                 cost_basis: cost_basis.clone(),
                                 gain: gain.clone(),
@@ -132,7 +132,7 @@ impl Portfolio {
                             realizations.push(realization);
                         } else {
                             let sale = Sale{
-                                when: trade.when.clone(),
+                                when: trade.when,
                                 original_offered: trade.original_offered.clone(),
                                 offered: Amount{amount: matching.offered.amount.clone(), symbol: matching.offered.symbol},
                                 gained: Amount{amount: proceeds.clone(), symbol: matching.gained.symbol},
@@ -148,8 +148,8 @@ impl Portfolio {
                         let remainder_offered = (&matching.offered.amount - &matching.offered.amount * &divisor).clone();
 
                         let sale = Sale{
-                            when: matching.when.clone(),
-                            original_offered: Amount{amount: (&matching.original_offered.amount * &divisor).clone(), symbol: trade.original_offered.symbol.clone()},
+                            when: matching.when,
+                            original_offered: Amount{amount: (&matching.original_offered.amount * &divisor).clone(), symbol: trade.original_offered.symbol},
                             offered: Amount{amount: remainder_offered, symbol: matching.offered.symbol},
                             gained: Amount{amount: remainder_gained, symbol: matching.gained.symbol},
                         };
@@ -168,8 +168,8 @@ impl Portfolio {
                                 amount: (&trade.original_offered.amount * &divisor).clone(),
                                 description: description.clone(),
                                 symbol: trade.original_offered.symbol,
-                                acquired_when: Some(matching.when.clone()),
-                                disposed_when: trade.when.clone(),
+                                acquired_when: Some(matching.when),
+                                disposed_when: trade.when,
                                 proceeds: proceeds.clone(),
                                 cost_basis: cost_basis.clone(),
                                 gain: gain.clone(),
@@ -178,8 +178,8 @@ impl Portfolio {
                             realizations.push(realization);
                         } else {
                             let sale = Sale{
-                                when: trade.when.clone(),
-                                original_offered: Amount{amount: (&trade.original_offered.amount * &divisor).clone(), symbol: trade.original_offered.symbol.clone()},
+                                when: trade.when,
+                                original_offered: Amount{amount: (&trade.original_offered.amount * &divisor).clone(), symbol: trade.original_offered.symbol},
                                 offered: Amount{amount: matching.offered.amount.clone(), symbol: matching.offered.symbol},
                                 gained: Amount{amount: proceeds.clone(), symbol: matching.gained.symbol},
                             };
@@ -193,8 +193,8 @@ impl Portfolio {
 
                         if !remainder_gained.is_zero() {
                             let sale = Sale{
-                                when: trade.when.clone(),
-                                original_offered: Amount{amount: (&trade.original_offered.amount * &divisor).clone(), symbol: trade.original_offered.symbol.clone()},
+                                when: trade.when,
+                                original_offered: Amount{amount: (&trade.original_offered.amount * &divisor).clone(), symbol: trade.original_offered.symbol},
                                 offered: Amount{amount: remainder_offered, symbol: trade.offered.symbol},
                                 gained: Amount{amount: remainder_gained, symbol: trade.gained.symbol},
                             };
@@ -210,7 +210,7 @@ impl Portfolio {
                     description: description.clone(),
                     symbol: trade.original_offered.symbol,
                     acquired_when: None,
-                    disposed_when: trade.when.clone(),
+                    disposed_when: trade.when,
                     proceeds: trade.gained.amount.clone(),
                     cost_basis: BigDecimal::zero(),
                     gain: trade.gained.amount.clone(),
@@ -234,7 +234,7 @@ fn organize_trades(trades: &Vec<Trade>, denomination: &Symbol) ->
     for trade in trades.iter() {
         let Trade{ when, kind: Kind::Trade{ gained, offered, .. }, .. } = trade;
         let sale = Sale{
-            when: when.clone(),
+            when: *when,
             original_offered: offered.clone(),
             offered: offered.clone(),
             gained: gained.clone(),
@@ -244,7 +244,7 @@ fn organize_trades(trades: &Vec<Trade>, denomination: &Symbol) ->
         } else {
             trades_by_gained
                 .entry(gained.symbol)
-                .or_insert_with(|| VecDeque::new())
+                .or_insert_with(VecDeque::new)
                 .push_back(sale);
         }
     }
@@ -255,7 +255,7 @@ fn organize_trades(trades: &Vec<Trade>, denomination: &Symbol) ->
 impl fmt::Debug for Portfolio {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (currency, wallet) in self.wallets.iter() {
-            write!(f, "Wallet {:} {:} tokens remain worth ${:} ({:}/{:})\n", currency, wallet.count(), wallet.cost_basis(), wallet.cumulative_bought, wallet.cumulative_sold)?;
+            writeln!(f, "Wallet {:} {:} tokens remain worth ${:} ({:}/{:})", currency, wallet.count(), wallet.cost_basis(), wallet.cumulative_bought, wallet.cumulative_sold)?;
         }
         Ok(())
     }

@@ -77,7 +77,7 @@ impl Config {
                 rate: t.rate.clone(),
                 usd_rate: t.usd_rate.clone(),
                 usd_amount: t.usd_amount.clone(),
-                created_at: t.created_at.clone().map(|t| chrono_to_toml_date(t)),
+                created_at: t.created_at.clone().map(chrono_to_toml_date),
                 provider: PROVIDER,
             })
             .collect()
@@ -85,8 +85,7 @@ impl Config {
 
     pub fn denomination(&self) -> Symbol {
         self.denomination.as_ref()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or_else(|| USD)
+            .and_then(|s| s.parse().ok()).unwrap_or(USD)
     }
 }
 

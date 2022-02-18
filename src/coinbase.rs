@@ -1,7 +1,6 @@
 use std::str::FromStr;
 
 use anyhow::Result;
-use bigdecimal::BigDecimal;
 use coinbase_rs::{Private, MAIN_URL};
 use uuid::Uuid;
 use futures::stream::StreamExt;

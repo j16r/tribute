@@ -56,7 +56,7 @@ impl Portfolio {
                 ref gained,
             } => {
                 self.buy(trade.when, offered, gained);
-                self.sell(trade.when, offered, gained);
+                self.sell(trade.when, gained, offered);
             }
         };
         self.trades.push(trade.clone());

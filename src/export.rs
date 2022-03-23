@@ -72,7 +72,9 @@ pub async fn export(config: &Config) -> Result<(), Box<dyn Error>> {
     ])?;
 
     // This will likely need to hold the entire set of transactions in memory, so watch out...
-    let transactions = itertools::kmerge(exchange_transactions).unique_by(|t| t.id.clone()).sorted();
+    let transactions = itertools::kmerge(exchange_transactions)
+        .unique_by(|t| t.id.clone())
+        .sorted();
 
     for transaction in transactions {
         writer.write_record(&[

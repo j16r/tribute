@@ -38,11 +38,11 @@ use crate::report::Format;
 async fn main() {
     let config = load_config(None).unwrap_or_else(|error| match error {
         ConfigError::TomlError(e) => {
-            eprintln!("Error parsing config.rs: {}", e);
+            eprintln!("Error parsing config.toml: {}", e);
             process::exit(1);
         }
         e => {
-            eprintln!("Error loading config.rs: {:?}", e);
+            eprintln!("Error loading config.toml: {:?}", e);
             process::exit(1);
         }
     });

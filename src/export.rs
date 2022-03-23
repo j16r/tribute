@@ -56,9 +56,13 @@ pub async fn export(config: &Config) -> Result<(), Box<dyn Error>> {
         });
     }
 
+    // This will likely need to hold the entire set of transactions in memory, so watch out...
+    let transactions = itertools::kmerge(exchange_transactions)
+        .unique_by(|t| t.id.clone())
+        .sorted();
+
     // Output
     let mut writer = csv::Writer::from_writer(io::stdout());
-
     writer.write_record(&[
         "ID",
         "Market",
@@ -70,11 +74,6 @@ pub async fn export(config: &Config) -> Result<(), Box<dyn Error>> {
         "Created At",
         "Provider",
     ])?;
-
-    // This will likely need to hold the entire set of transactions in memory, so watch out...
-    let transactions = itertools::kmerge(exchange_transactions)
-        .unique_by(|t| t.id.clone())
-        .sorted();
 
     for transaction in transactions {
         writer.write_record(&[

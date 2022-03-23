@@ -298,7 +298,7 @@ impl fmt::Debug for Portfolio {
         for (currency, wallet) in self.wallets.iter() {
             writeln!(
                 f,
-                "Wallet {:} {:} tokens remain worth ${:} ({:}/{:})",
+                "Wallet {:} {:} tokens remain worth ${:} ({:.2}/{:.2})",
                 currency,
                 wallet.count(),
                 wallet.cost_basis(),

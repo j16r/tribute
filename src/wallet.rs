@@ -48,12 +48,6 @@ impl Wallet {
             unit_cost: unit_cost.clone(),
             date_of_purchase: date,
         });
-        eprintln!(
-            "Bought {:} of {:} resulting in a balance of {:}",
-            amount,
-            self.token,
-            &self.cumulative_bought - &self.cumulative_sold
-        );
     }
 
     // the total cost basis of everything in this wallet
@@ -95,16 +89,10 @@ impl Wallet {
             amount_to_consume -= &lot.amount;
             lots_consumed += 1;
         }
-        eprintln!(
-            "Sold {:} of {:} resulting in a balance of {:}",
-            amount,
-            self.token,
-            &self.cumulative_bought - &self.cumulative_sold
-        );
 
         if amount_to_consume > BigDecimal::zero() {
             eprintln!(
-                "Sale of {:} could not be satisfied, amount to consume = {:} (only {:} was sold)",
+                "Sale of {:.2} could not be satisfied, amount to consume = {:.2} (only {:.2} was sold)",
                 self.token,
                 amount_to_consume,
                 amount - &amount_to_consume

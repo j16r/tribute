@@ -87,8 +87,6 @@ impl Portfolio {
                 original = trade.original_offered.symbol.symbol(),
             );
 
-            eprintln!("\nStarting new trade match");
-
             if let Some(matching_sales) = trades_by_gained.get_mut(&trade.offered.symbol) {
                 if matching_sales.is_empty() {
                     let realization = Realization {

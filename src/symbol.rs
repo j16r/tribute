@@ -4,6 +4,7 @@ use std::fmt::{Debug, Display, Error, Formatter};
 
 pub const USD: Symbol = Symbol::Fiat(Fiat::USD);
 pub const BTC: Symbol = Symbol::Crypto(Crypto::BTC);
+pub const LINK: Symbol = Symbol::Crypto(Crypto::LINK);
 pub const USDT: Symbol = Symbol::Crypto(Crypto::USDT);
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]

@@ -88,7 +88,6 @@ impl Portfolio {
             );
 
             eprintln!("\nStarting new trade match");
-            dbg!(&trade);
 
             if let Some(matching_sales) = trades_by_gained.get_mut(&trade.offered.symbol) {
                 if matching_sales.is_empty() {
@@ -102,13 +101,10 @@ impl Portfolio {
                         cost_basis: BigDecimal::zero(),
                         gain: trade.gained.amount.clone(),
                     };
-                    dbg!(&realization);
                     realizations.push(realization);
                 }
 
                 if let Some(matching) = matching_sales.pop_front() {
-                    dbg!(&matching);
-
                     if matching.gained.amount > trade.offered.amount {
                         let divisor = &trade.offered.amount / &matching.gained.amount;
                         let proceeds = trade.gained.amount.clone();
@@ -126,7 +122,6 @@ impl Portfolio {
                                 cost_basis: cost_basis.clone(),
                                 gain: gain.clone(),
                             };
-                            dbg!(&realization);
                             realizations.push(realization);
                         } else {
                             let sale = Sale {
@@ -141,7 +136,6 @@ impl Portfolio {
                                     symbol: matching.gained.symbol,
                                 },
                             };
-                            dbg!(&sale);
 
                             final_sales.push_front(sale);
                         }
@@ -169,7 +163,6 @@ impl Portfolio {
                                 symbol: matching.gained.symbol,
                             },
                         };
-                        dbg!(&sale);
 
                         matching_sales.push_front(sale);
                     } else {
@@ -189,7 +182,6 @@ impl Portfolio {
                                 cost_basis: cost_basis.clone(),
                                 gain: gain.clone(),
                             };
-                            dbg!(&realization);
                             realizations.push(realization);
                         } else {
                             let sale = Sale {
@@ -207,7 +199,6 @@ impl Portfolio {
                                     symbol: matching.gained.symbol,
                                 },
                             };
-                            dbg!(&sale);
 
                             final_sales.push_front(sale);
                         }
@@ -232,7 +223,6 @@ impl Portfolio {
                                     symbol: trade.gained.symbol,
                                 },
                             };
-                            dbg!(&sale);
 
                             final_sales.push_front(sale);
                         }
@@ -249,7 +239,6 @@ impl Portfolio {
                     cost_basis: BigDecimal::zero(),
                     gain: trade.gained.amount.clone(),
                 };
-                dbg!(&realization);
                 realizations.push(realization);
             }
         }

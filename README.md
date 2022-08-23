@@ -34,7 +34,7 @@ other means, you can add transactions to Tribute's configuration.
 
 Tribute can export all transactions for either Coinbase or Coinbase Pro
 exchanges, and outputs in CSV format. When you export, all transactions from
-your configured exchanges and all manual transactions ared ordered by date and
+your configured exchanges and all manual transactions are ordered by date and
 emitted.
 
 ## Reports

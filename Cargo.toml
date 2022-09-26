@@ -5,25 +5,25 @@ authors = ["John Barker <dev@j16r.net>"]
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0"
+anyhow = "*"
 bigdecimal = { version = "*", features = [ "serde" ] }
-chrono = "0.4"
+chrono = "*"
 clap = "2.33"
 coinbase-pro-rs = { path = "../coinbase-pro-rs/" }
 #coinbase-pro-rs = "0.5.1"
 coinbase-rs = { path = "../coinbase-rs/" }
-csv = "1.1.0"
+csv = "*"
 futures = "*"
-itertools = "0.7"
-num-bigint = "0.2"
-regex = "1.1.0"
-reqwest = { version = "0.10", features = ["json"] }
-serde = "1.0"
-serde_derive = "1.0"
-tempfile = "3"
+itertools = "*"
+num-bigint = "*"
+regex = "*"
+reqwest = { version = "*", features = ["json"] }
+serde = "*"
+serde_derive = "*"
+tempfile = "*"
 tokio = "*"
-toml = "0.5.1"
-uuid = { version = "0.8.1", features = [ "serde", "v4" ] }
+toml = "*"
+uuid = { version = "*", features = [ "serde", "v4" ] }
 web3 = "0.10.0"
 
 [dev-dependencies]

@@ -4,12 +4,12 @@ use std::thread;
 use std::time::Duration;
 
 use bigdecimal::{BigDecimal, FromPrimitive, Zero};
+use coinbase_pro_rs::Uuid;
 use coinbase_pro_rs::structs::private::*;
 use coinbase_pro_rs::structs::public::*;
 use coinbase_pro_rs::{ASync, CBError, Private, MAIN_URL};
 use futures::pin_mut;
 use futures::stream::{Stream, StreamExt};
-use uuid::Uuid;
 
 use crate::symbol::Symbol;
 use crate::types::{DateTime, Transaction};

@@ -297,6 +297,7 @@ dependencies = [
 [[package]]
 name = "coinbase-rs"
 version = "0.3.0"
+source = "git+https://github.com/j16r/coinbase-rs#41dc7c093e9c847bad563470066b5b87cd986269"
 dependencies = [
  "async-stream",
  "base64",

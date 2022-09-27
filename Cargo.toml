@@ -24,7 +24,7 @@ tempfile = "*"
 tokio = "*"
 toml = "*"
 uuid = { version = "*", features = [ "serde", "v4" ] }
-web3 = "0.10.0"
+web3 = "*"
 
 [dev-dependencies]
 pretty_assertions = "*"

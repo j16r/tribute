@@ -39,7 +39,7 @@ pub async fn export(config: &Config) -> Result<(), Box<dyn Error>> {
             } => coinbase::transactions(key, secret).await?,
             Exchange::Ethereum { ref url } => {
                 if let Some(ref a) = config.accounts {
-                    ethereum::transactions(url, a)?
+                    ethereum::transactions(url, a).await?
                 } else {
                     eprintln!("Specified ethereum configuration with no accounts");
                     vec![]

@@ -2,7 +2,6 @@ use std::error::Error;
 use std::str::FromStr;
 
 use bigdecimal::BigDecimal;
-use web3::futures::Future;
 use web3::types::{BlockId, BlockNumber};
 
 use crate::types::Transaction;
@@ -10,19 +9,19 @@ use chrono::prelude::*;
 
 const PROVIDER: &str = "ethereum";
 
-pub fn transactions(
+pub async fn transactions(
     url: &str,
     accounts: &Vec<web3::types::H160>,
 ) -> Result<Vec<Transaction>, Box<dyn Error>> {
-    let (_eloop, transport) = web3::transports::WebSocket::new(url)?;
+    let transport = web3::transports::WebSocket::new(url).await?;
     let web3 = web3::Web3::new(transport);
-    let current_block = web3.eth().block_number().wait()?;
+    let current_block = web3.eth().block_number().await?;
 
     let mut transactions = Vec::new();
 
     for block_id in (0..current_block.as_usize()).rev() {
         let number = BlockId::Number(BlockNumber::Number(block_id.into()));
-        let block = web3.eth().block_with_txs(number).wait()?;
+        let block = web3.eth().block_with_txs(number).await?;
         for transaction in block.unwrap().transactions {
             if !transaction_related(accounts, &transaction) {
                 continue;
@@ -58,7 +57,7 @@ fn transaction_related(
     accounts: &Vec<web3::types::H160>,
     transaction: &web3::types::Transaction,
 ) -> bool {
-    accounts.contains(&transaction.from)
+    accounts.contains(&transaction.from.unwrap())
         || transaction.to.map_or(false, |ref t| accounts.contains(t))
 }
 

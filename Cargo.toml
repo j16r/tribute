@@ -9,8 +9,7 @@ anyhow = "*"
 bigdecimal = { version = "*", features = [ "serde" ] }
 chrono = "*"
 clap = "*"
-coinbase-pro-rs = { path = "../coinbase-pro-rs/" }
-#coinbase-pro-rs = "0.5.1"
+coinbase-pro-rs = { version = "*", git = "https://github.com/j16r/coinbase-pro-rs/" }
 coinbase-rs = { version = "*", git = "https://github.com/j16r/coinbase-rs" }
 csv = "*"
 futures = "*"

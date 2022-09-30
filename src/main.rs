@@ -1,3 +1,4 @@
+#![feature(is_some_with)]
 #![feature(drain_filter)]
 #![feature(async_closure)]
 
@@ -29,7 +30,7 @@ mod wallet;
 
 use std::process;
 
-use clap::{App, SubCommand};
+use clap::{arg, Command};
 
 use crate::config::{load_config, ConfigError};
 use crate::report::Format;
@@ -47,16 +48,14 @@ async fn main() {
         }
     });
 
-    let matches = App::new("Tribute")
+    let matches = Command::new("Tribute")
         .version("1.0")
         .author("John Barker <me@j16r.net>")
         .about("Generate tax records from various crypto exchanges")
-        .subcommand(SubCommand::with_name("export").about("Exports your exchange order history"))
+        .subcommand(Command::new("export").about("Exports your exchange order history"))
         .subcommand(
-            SubCommand::with_name("report")
-                .args_from_usage(
-                    "--format=[FORMAT] 'Sets the output report format, one of: IRS1099B,TurboTax'",
-                )
+            Command::new("report")
+                .arg(arg!(--format <FORMAT>).help("Sets the output report format, one of: IRS1099B, TurboTax"))
                 .about("Create a report from your order history"),
         )
         .get_matches();
@@ -68,7 +67,7 @@ async fn main() {
         }
     } else if let Some(subcommand) = matches.subcommand_matches("report") {
         let format: Option<Format> = subcommand
-            .value_of("format")
+            .get_one::<String>("format")
             .map(|v| v.parse().unwrap())
             .or(config.report_format.clone());
         if let Err(err) = report::report(config.tax_year, &config.denomination(), &format) {

@@ -57,8 +57,7 @@ fn transaction_related(
     accounts: &Vec<web3::types::H160>,
     transaction: &web3::types::Transaction,
 ) -> bool {
-    accounts.contains(&transaction.from.unwrap())
-        || transaction.to.map_or(false, |ref t| accounts.contains(t))
+    transaction.from.is_some_and(|f| accounts.contains(f)) || transaction.to.map_or(false, |ref t| accounts.contains(t))
 }
 
 #[cfg(test)]
@@ -96,7 +95,7 @@ mod test {
         let accounts: Vec<web3::types::H160> = vec![address];
 
         let transaction_from_account = web3::types::Transaction {
-            from: address,
+            from: Some(address),
             ..Default::default()
         };
 
